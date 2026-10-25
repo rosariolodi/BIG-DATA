@@ -3,15 +3,20 @@ Módulo de Limpieza, Estandarización y Tratamiento de Nulos (Inciso 3.1)
 DATAMARCA S.A.
 """
 
-from pyspark.sql import DataFrame
+from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import col, trim, lower, upper, when, lit
+from src.ingestion.reader import leer_transacciones_csv, leer_logs_ecommerce_json
 
-def limpiar_y_estandarizar_transacciones(df: DataFrame) -> DataFrame:
+def ejecutar_limpieza_transacciones(spark: SparkSession) -> DataFrame:
     """
-    Realiza la limpieza inicial, estandarización de texto y tratamiento de nulos
-    para el DataFrame de transacciones.
+    1. Llama los datos crudos de transacciones desde la capa raw.
+    2. Aplica la limpieza inicial, estandarización de texto y tratamiento de nulos.
     """
-    df_limpio = df \
+    # Llamado de datos desde raw (usando la función de ingestión)
+    df_raw = leer_transacciones_csv(spark)
+    
+    # Limpieza y estandarización optimizada (Catalyst friendly)
+    df_limpio = df_raw \
         .dropna(subset=["transaction_id", "store_id", "amount_cop"]) \
         .withColumn("store_id", upper(trim(col("store_id")))) \
         .withColumn("product_category", lower(trim(col("product_category")))) \
@@ -24,12 +29,16 @@ def limpiar_y_estandarizar_transacciones(df: DataFrame) -> DataFrame:
     
     return df_limpio
 
-def limpiar_y_estandarizar_logs(df: DataFrame) -> DataFrame:
+def ejecutar_limpieza_logs(spark: SparkSession) -> DataFrame:
     """
-    Realiza la limpieza inicial, estandarización de texto y tratamiento de nulos
-    para el DataFrame de logs de e-commerce.
+    1. Llama los datos crudos de logs de e-commerce desde la capa raw.
+    2. Aplica la limpieza inicial, estandarización de texto y tratamiento de nulos.
     """
-    df_limpio = df \
+    # Llamado de datos desde raw (usando la función de ingestión)
+    df_raw = leer_logs_ecommerce_json(spark)
+    
+    # Limpieza y estandarización optimizada
+    df_limpio = df_raw \
         .dropna(subset=["event_id", "user_id", "timestamp"]) \
         .withColumn("device", lower(trim(col("device")))) \
         .withColumn("product_category", lower(trim(col("product_category")))) \
