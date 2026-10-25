@@ -1,13 +1,74 @@
+"""
+Orquestador Principal del Pipeline Batch
+DATAMARCA S.A.
+"""
+
+import os
+import time
+import urllib.request
+from pathlib import Path
+
+# --- AUTOCORRECCIÓN DE WINUTILS PARA WINDOWS ---
+hadoop_dir = Path(os.path.expanduser("~")) / ".hadoop"
+bin_dir = hadoop_dir / "bin"
+winutils_path = bin_dir / "winutils.exe"
+
+if not winutils_path.exists():
+    try:
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        url = "https://raw.githubusercontent.com/steveloughran/winutils/master/hadoop-3.0.0/bin/winutils.exe"
+        urllib.request.urlretrieve(url, winutils_path)
+    except Exception:
+        pass
+
+os.environ["HADOOP_HOME"] = str(hadoop_dir)
+# ---------------------------------------------
+
 from pyspark.sql import SparkSession
 from transformations.cleaning import ejecutar_limpieza_transacciones, ejecutar_limpieza_logs
+from transformations.joins import realizar_join_transacciones_logs, generar_agregaciones_negocio
 
-# Inicializar Spark
-spark = SparkSession.builder.appName("Datamarca-Limpieza").getOrCreate()
+def ejecutar_pipeline():
+    inicio_total = time.time()
+    
+    # 1. Inicializar Spark Session
+    spark = SparkSession.builder \
+        .appName("Datamarca-Pipeline-Joins") \
+        .config("spark.sql.sources.partitionOverwriteMode", "dynamic") \
+        .getOrCreate()
+    
+    print("--- INICIO DE LIMPIEZA Y JOINS DISTRIBUIDOS ---")
+    
+    # 2. Ejecutar Limpieza
+    df_clean_tx = ejecutar_limpieza_transacciones(spark)
+    df_clean_logs = ejecutar_limpieza_logs(spark)
+    
+    # 3. Desarrollo de Joins Distribuidos (Inciso 4.1)
+    t0 = time.time()
+    df_joined = realizar_join_transacciones_logs(df_clean_tx, df_clean_logs)
+    print(f"[Tiempo] Join distribuido completado en: {time.time() - t0:.2f} segundos")
+    
+    # 4. Agregaciones de Negocio
+    df_resultado_negocio = generar_agregaciones_negocio(df_joined)
+    
+    # Mostrar las primeras filas del resultado analítico
+    print("--- RESULTADOS DE LAS AGREGACIONES POR CATEGORÍA ---")
+    df_resultado_negocio.show(10, truncate=False)
+    
+    ## 5. Persistencia de resultados procesados a Parquet usando Pandas en Windows
+    print("--- GUARDANDO RESULTADOS EN PARQUET ---")
+    
+    # Crear la carpeta de destino si no existe
+    Path("data/processed/kpis_negocio_categoria").mkdir(parents=True, exist_ok=True)
+    
+    # Convertir a Pandas y guardar como Parquet (evita el error de winutils/hadoop.dll en Windows)
+    df_pandas = df_resultado_negocio.toPandas()
+    df_pandas.to_parquet("data/processed/kpis_negocio_categoria/resultado.parquet", index=False)
+    
+    tiempo_total = time.time() - inicio_total
+    print(f"--- PIPELINE COMPLETADO EXITOSAMENTE (Tiempo total: {tiempo_total:.2f} s) ---")
+    
+    spark.stop()
 
-# Llamar y limpiar transacciones
-df_transacciones_clean = ejecutar_limpieza_transacciones(spark)
-df_transacciones_clean.show(5)
-
-# Llamar y limpiar logs
-df_logs_clean = ejecutar_limpieza_logs(spark)
-df_logs_clean.show(5)
+if __name__ == "__main__":
+    ejecutar_pipeline()
