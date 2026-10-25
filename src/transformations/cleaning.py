@@ -5,7 +5,7 @@ DATAMARCA S.A.
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import col, trim, lower, upper, when, lit
-from src.ingestion.reader import leer_transacciones_csv, leer_logs_ecommerce_json
+from ingestion.reader import leer_transacciones_csv, leer_logs_ecommerce_json
 
 def ejecutar_limpieza_transacciones(spark: SparkSession) -> DataFrame:
     """

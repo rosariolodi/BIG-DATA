@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from src.transformations.cleaning import ejecutar_limpieza_transacciones, ejecutar_limpieza_logs
+from transformations.cleaning import ejecutar_limpieza_transacciones, ejecutar_limpieza_logs
 
 # Inicializar Spark
 spark = SparkSession.builder.appName("Datamarca-Limpieza").getOrCreate()
