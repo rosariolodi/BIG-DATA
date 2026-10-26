@@ -63,8 +63,8 @@ def leer_transacciones_csv(spark: SparkSession, ruta_csv: str = DEFAULT_CSV_PATH
     # Reglas de validación de calidad ajustadas a los nombres reales del CSV:
     # Columnas reales: transaction_id, timestamp, store_id, product_category, amount_cop, payment_method
     df_valido = df_transacciones.filter(
-        col("_corrupt_record").isNull() &
         col("transaction_id").isNotNull() &
+        col("user_id").isNotNull() &
         col("store_id").isNotNull() &
         col("amount_cop").isNotNull() &
         (col("amount_cop") > 0) &
