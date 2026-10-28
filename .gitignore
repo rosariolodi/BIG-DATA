@@ -1,0 +1,39 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- Spark / Hadoop (archivos que genera Spark al ejecutarse) ---
+spark-warehouse/
+metastore_db/
+derby.log
+.hadoop/
+
+# --- Salidas generadas por el pipeline ---
+# La cuarentena y las métricas de calidad se regeneran en cada ejecución.
+data/quarantine/
+# Ejecutar `python main.py` desde src/ crea src/data/; la salida oficial es data/processed/ (raíz).
+src/data/
+
+# --- Credenciales y configuración local (nunca se versionan) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
+crash.log
+
+# --- Editores y sistema operativo ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
