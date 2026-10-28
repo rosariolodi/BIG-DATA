@@ -27,6 +27,7 @@ os.environ["HADOOP_HOME"] = str(hadoop_dir)
 from pyspark.sql import SparkSession
 from transformations.cleaning import ejecutar_limpieza_transacciones, ejecutar_limpieza_logs
 from transformations.joins import realizar_join_transacciones_logs, generar_agregaciones_negocio
+from transformations.agregaciones import ejecutar_agregaciones, guardar_resultados
 
 def ejecutar_pipeline():
     inicio_total = time.time()
@@ -35,6 +36,7 @@ def ejecutar_pipeline():
     spark = SparkSession.builder \
         .appName("Datamarca-Pipeline-Joins") \
         .config("spark.sql.sources.partitionOverwriteMode", "dynamic") \
+        .config("spark.sql.session.timeZone", "America/Bogota") \
         .getOrCreate()
     
     print("--- INICIO DE LIMPIEZA Y JOINS DISTRIBUIDOS ---")
@@ -64,7 +66,14 @@ def ejecutar_pipeline():
     # Convertir a Pandas y guardar como Parquet (evita el error de winutils/hadoop.dll en Windows)
     df_pandas = df_resultado_negocio.toPandas()
     df_pandas.to_parquet("data/processed/kpis_negocio_categoria/resultado.parquet", index=False)
-    
+
+    # 6. Agregaciones de negocio adicionales con SparkSQL y DataFrames (Inciso 4.2)
+    print("--- AGREGACIONES DE NEGOCIO (SPARKSQL Y DATAFRAMES) ---")
+    t0 = time.time()
+    resultados_agregaciones = ejecutar_agregaciones(spark, df_joined)
+    guardar_resultados(resultados_agregaciones, "data/processed")
+    print(f"[Tiempo] Agregaciones de negocio completadas en: {time.time() - t0:.2f} segundos")
+
     tiempo_total = time.time() - inicio_total
     print(f"--- PIPELINE COMPLETADO EXITOSAMENTE (Tiempo total: {tiempo_total:.2f} s) ---")
     
