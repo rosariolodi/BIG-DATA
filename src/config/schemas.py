@@ -19,6 +19,10 @@ AVISO IMPORTANTE sobre nullable:
   todos los campos a nullable=True, aunque aquí se declaren nullable=False. Por eso
   `nullable=False` es la intención/contrato documentado, y el cumplimiento real se
   verifica con las reglas de completitud de la tarea 1.3 (ver `CAMPOS_OBLIGATORIOS_*`).
+
+IMPORTANTE (CSV): en un CSV con esquema de usuario Spark asigna las columnas por
+POSICIÓN, no por nombre. El orden de los campos de TRANSACCIONES_SCHEMA debe ser
+idéntico al orden de la cabecera del archivo.
 """
 from pyspark.sql.types import (
     LongType,
@@ -32,10 +36,13 @@ from pyspark.sql.types import (
 # ---------------------------------------------------------------------------
 # 1) Transacciones POS (CSV)
 # ---------------------------------------------------------------------------
-# Muestra:  TXN10000,2026-09-15 08:02:06,MED-01,Snacks,74979,App
+# Cabecera: transaction_id,user_id,timestamp,store_id,product_category,amount_cop,payment_method
+# Muestra:  TXN10000,usr_2939,2026-09-15 08:02:06,MED-01,Snacks,74979,App
 TRANSACCIONES_SCHEMA = StructType([
     # PK. Formato ^TXN\d{5}$
     StructField("transaction_id",   StringType(),    nullable=False),
+    # Cliente que realiza la compra. Llave de cruce con los logs. Formato ^usr_\d{4}$
+    StructField("user_id",          StringType(),    nullable=False),
     # Hora local del POS, sin zona horaria: 'yyyy-MM-dd HH:mm:ss'
     StructField("timestamp",        TimestampType(), nullable=False),
     # Formato ^[A-Z]{3}-\d{2}$ ; prefijo = ciudad (BOG, MED, CAL, BAR)
@@ -61,17 +68,17 @@ TRANSACCIONES_READ_OPTIONS = {
 # ---------------------------------------------------------------------------
 # 2) Logs de e-commerce (JSON)
 # ---------------------------------------------------------------------------
-# Muestra:  {"event_id": "evt_00001", "timestamp": "2026-09-06T14:23:05Z", ...}
+# Muestra:  {"event_id": "evt_00001", "timestamp": "2026-09-15T08:02:06Z", ...}
 LOGS_ECOMMERCE_SCHEMA = StructType([
     # PK. Formato ^evt_\d{5}$
     StructField("event_id",             StringType(),    nullable=False),
     # ISO-8601 en UTC (sufijo 'Z')
     StructField("timestamp",            TimestampType(), nullable=False),
-    # Formato ^usr_\d{4}$
+    # Formato ^usr_\d{4}$ ; misma llave que transacciones.user_id
     StructField("user_id",              StringType(),    nullable=False),
     StructField("event_type",           StringType(),    nullable=False),
     StructField("device",               StringType(),    nullable=False),
-    # En INGLÉS; no coincide con las categorías del POS (ver EDA, sección 15)
+    # Mismas categorías (en español) que el POS, por lo que ya es comparable
     StructField("product_category",     StringType(),    nullable=False),
     # Segundos, rango observado 10 - 1800 -> IntegerType es suficiente
     StructField("session_duration_sec", IntegerType(),   nullable=False),
@@ -114,7 +121,9 @@ DOMINIO_LOGS = {
     "event_type": ["page_view", "search", "add_to_cart", "remove_from_cart",
                    "checkout_start", "purchase"],
     "device": ["desktop", "mobile", "tablet"],
-    "product_category": ["beauty", "clothing", "electronics", "home", "sports"],
+    # Los logs de DATAMARCA usan las mismas categorías que el POS
+    "product_category": ["Aseo", "Bebidas", "Carnes", "Frutas", "Granos",
+                         "Licores", "Lácteos", "Panadería", "Snacks", "Verduras"],
 }
 
 # Patrones de formato de llaves
