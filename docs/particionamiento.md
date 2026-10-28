@@ -50,8 +50,8 @@ Las fuentes registran el tiempo de forma distinta:
 
 Para que un mismo día signifique lo mismo en las dos fuentes, `fecha` se calcula **siempre en `America/Bogota`**:
 - Se configura `spark.sql.session.timeZone = America/Bogota`.
-- En los logs se convierte con `from_utc_timestamp(timestamp, 'America/Bogota')` antes de aplicar `to_date`.
-- En el POS se usa `to_date(timestamp)` (ya está en hora local).
+- En las dos fuentes se usa `to_date(timestamp)`. El `timestamp` de Spark es un instante: el del POS se leyó como hora de Bogotá y el de los logs como UTC (sufijo `Z`), y `to_date` lo convierte al día de la zona de la sesión.
+- **Corrección (tarea 4.3):** no se aplica además `from_utc_timestamp(timestamp, 'America/Bogota')`. Con la sesión en Bogotá desplazaría la hora dos veces y los eventos entre las 00:00 y las 05:00 de Bogotá caerían en el día anterior. Esa función solo es correcta si la sesión está en UTC.
 
 Sin este paso, un evento de las 22:00 en Bogotá (03:00 UTC del día siguiente) caería en una partición distinta a la de las ventas de ese mismo día.
 
@@ -64,13 +64,14 @@ Sin este paso, un evento de las 22:00 en Bogotá (03:00 UTC del día siguiente) 
 | Silver | `silver/transacciones/fecha=AAAA-MM-DD/` | `fecha` |
 | Silver | `silver/logs_ecommerce/fecha=AAAA-MM-DD/` | `fecha` |
 | Cuarentena | `quarantine/<fuente>/fecha_ingestion=AAAA-MM-DD/` | fecha de ingestión |
-| Gold | `gold/<tabla_agregada>/` (por ejemplo ventas diarias por tienda) | `mes` (`AAAA-MM`) |
+| Gold | `gold/<tabla_agregada>/` con columna `fecha` (por ejemplo `ventas_por_dia`) | `mes` (`AAAA-MM`) |
+| Gold | `gold/<tabla_agregada>/` que resume todo el periodo (por ejemplo `kpis_por_categoria`) | `fecha_proceso` (día de la ejecución) |
 
 Ruta completa de ejemplo: `abfss://<contenedor>@<cuenta>.dfs.core.windows.net/silver/transacciones/fecha=2026-09-15/`.
 
 - **Bronze y Silver** conservan una carpeta por día porque se reprocesan por día.
 - **Cuarentena** se parte por la fecha de ingestión, no por la del evento, porque un registro erróneo puede traer una fecha inválida y no tendría partición.
-- **Gold** son tablas ya agregadas y pequeñas; particionar por día generaría archivos casi vacíos, por eso se agrupa por mes.
+- **Gold** son tablas ya agregadas y pequeñas; particionar por día generaría archivos casi vacíos, por eso se agrupa por mes. Las agregaciones que no tienen fecha propia (resumen de todo el periodo) se guardan como una foto por ejecución en `fecha_proceso`, lo que conserva el histórico de cada corrida.
 
 ## 5. Riesgos y mitigaciones
 
@@ -81,21 +82,23 @@ Ruta completa de ejemplo: `abfss://<contenedor>@<cuenta>.dfs.core.windows.net/si
 | Partición con valores nulos o inválidos | Registros sin fecha válida | Ya se rechazan a cuarentena por las reglas T-C01/T-I03 y L-C01/L-I03 |
 | Reescritura accidental de todo el dataset | Perder días ya procesados | `spark.sql.sources.partitionOverwriteMode = dynamic` (ya configurado en `src/main.py`), que solo sobrescribe las particiones presentes en el DataFrame |
 
-## 6. Cómo se implementa (para la tarea 4.3)
+## 6. Cómo se implementa (tarea 4.3)
 
-Esquema general de escritura, a ajustar cuando se defina el almacenamiento:
+Implementado en `src/persistence/writer.py` y documentado en `docs/persistencia.md`. Esquema de la escritura:
 
 ```python
 (df
- .withColumn("fecha", to_date(col("timestamp")))   # en logs: to_date(from_utc_timestamp(col("timestamp"), "America/Bogota"))
+ .withColumn("fecha", to_date(col("timestamp")))   # igual en POS y logs (ver sección 3)
+ .repartition("fecha")                              # un archivo por partición
  .write
  .format("delta")                                   # o "parquet" si no hay Delta disponible
  .mode("overwrite")
+ .option("partitionOverwriteMode", "dynamic")
  .partitionBy("fecha")
  .save("abfss://<contenedor>@<cuenta>.dfs.core.windows.net/silver/transacciones"))
 ```
 
-Nota: `src/main.py` hoy guarda el resultado con pandas en un único archivo Parquet, para evitar errores de winutils en Windows. Ese camino no aplica particionamiento. La tarea 4.3 debe reemplazarlo por la escritura con Spark (`partitionBy`) o, si el entorno local no lo permite, ejecutar la persistencia particionada en el entorno cloud o en Colab.
+`src/main.py` ya no guarda con pandas en un único archivo. En Windows sin `hadoop.dll`, si Spark no puede escribir en disco local, el módulo escribe el mismo layout particionado con pyarrow.
 
 ## 7. Qué se evaluará en las pruebas de rendimiento (tareas 5.x)
 
@@ -106,4 +109,4 @@ Nota: `src/main.py` hoy guarda el resultado con pandas en un único archivo Parq
 ## 8. Pendientes que dependen de otras tareas
 
 - **Logs definitivos:** el archivo de logs cambió recientemente; las rutas y la columna `fecha` no dependen de sus categorías, pero conviene confirmar el rango de fechas final.
-- **Tablas Gold:** las agregaciones de negocio (tarea 4.2) definirán cuáles se materializan y su partición mensual.
+- **Tablas Gold:** resuelto en la tarea 4.3. Se materializan las seis agregaciones de `src/main.py` (ver `docs/persistencia.md`): `ventas_por_dia` por `mes` y las demás por `fecha_proceso`.

@@ -16,6 +16,10 @@ derby.log
 data/quarantine/
 # Ejecutar `python main.py` desde src/ crea src/data/; la salida oficial es data/processed/ (raíz).
 src/data/
+# Archivos auxiliares que Spark escribe junto a cada Parquet (no se necesitan para leer los datos)
+*.crc
+_SUCCESS
+_temporary/
 
 # --- Credenciales y configuración local (nunca se versionan) ---
 .env
