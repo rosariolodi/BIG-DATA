@@ -3,6 +3,25 @@ Orquestador Principal del Pipeline Batch
 DATAMARCA S.A.
 """
 
+# Ejecucion opcional del benchmark de rendimiento 5.1
+import sys
+import subprocess
+from pathlib import Path
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--benchmark":
+    raiz_proyecto = Path(__file__).resolve().parent.parent
+    benchmark = raiz_proyecto / "src" / "performance" / "benchmark_5_1.py"
+
+    if not benchmark.is_file():
+        raise SystemExit(f"No se encontro el benchmark: {benchmark}")
+
+    resultado = subprocess.run(
+        [sys.executable, str(benchmark), *sys.argv[2:]],
+        cwd=raiz_proyecto,
+        check=False
+    )
+    raise SystemExit(resultado.returncode)
+
 import os
 import time
 import urllib.request
