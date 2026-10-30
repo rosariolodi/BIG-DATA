@@ -122,10 +122,16 @@ class RegistroTiempos:
     def a_dict(self, spark=None, extra: Optional[Dict] = None) -> Dict:
         entorno = {"python": platform.python_version(), "sistema": platform.platform()}
         if spark is not None:
-            entorno.update({"spark": spark.version, "master": spark.sparkContext.master,
-                            "paralelismo": spark.sparkContext.defaultParallelism,
+            entorno.update({"spark": spark.version,
                             "shuffle_partitions": spark.conf.get("spark.sql.shuffle.partitions"),
                             "zona_horaria": spark.conf.get("spark.sql.session.timeZone")})
+            try:
+                entorno["master"] = spark.sparkContext.master
+                entorno["paralelismo"] = spark.sparkContext.defaultParallelism
+            except Exception:
+                # En clusters compartidos (Spark Connect) sparkContext no está disponible
+                entorno["master"] = "spark-connect"
+                entorno["paralelismo"] = None
         return {
             "corrida_id": self.corrida_id,
             "inicio": self._inicio.isoformat(timespec="seconds"),
