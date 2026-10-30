@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 venv/
 .ipynb_checkpoints/
+.pytest_cache/
 
 # --- Spark / Hadoop (archivos que genera Spark al ejecutarse) ---
 spark-warehouse/
@@ -16,6 +17,12 @@ derby.log
 data/quarantine/
 # Ejecutar `python main.py` desde src/ crea src/data/; la salida oficial es data/processed/ (raíz).
 src/data/
+
+# Logs de tiempos de cada ejecución (tarea 5.2). Solo se versionan las corridas elegidas como
+# evidencia, copiadas a reports/tiempos/evidencia/.
+reports/tiempos/*
+!reports/tiempos/evidencia/
+!reports/tiempos/README.md
 
 # --- Credenciales y configuración local (nunca se versionan) ---
 .env
