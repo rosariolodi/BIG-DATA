@@ -1,0 +1,91 @@
+{
+  "corrida_id": "20261029_191542",
+  "inicio": "2026-10-29T19:15:42",
+  "total_s": 58.066,
+  "estado": "ok",
+  "etapas_s": {
+    "ingestion": 18.543,
+    "transformacion": 35.271,
+    "persistencia": 0.81
+  },
+  "sin_etapa_s": 3.442,
+  "subetapas": [
+    {
+      "etapa": "ingestion",
+      "subetapa": "transacciones_csv",
+      "inicio": "2026-10-29T19:15:45",
+      "duracion_s": 14.865,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "ingestion",
+      "subetapa": "logs_json",
+      "inicio": "2026-10-29T19:16:00",
+      "duracion_s": 3.678,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "limpieza_transacciones",
+      "inicio": "2026-10-29T19:16:04",
+      "duracion_s": 1.126,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "limpieza_logs",
+      "inicio": "2026-10-29T19:16:05",
+      "duracion_s": 0.924,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "join",
+      "inicio": "2026-10-29T19:16:06",
+      "duracion_s": 10.252,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "agregaciones",
+      "inicio": "2026-10-29T19:16:16",
+      "duracion_s": 22.969,
+      "filas": 71,
+      "estado": "ok"
+    },
+    {
+      "etapa": "persistencia",
+      "subetapa": "kpis_negocio_categoria",
+      "inicio": "2026-10-29T19:16:40",
+      "duracion_s": 0.137,
+      "filas": 10,
+      "estado": "ok"
+    },
+    {
+      "etapa": "persistencia",
+      "subetapa": "agregaciones_adicionales",
+      "inicio": "2026-10-29T19:16:40",
+      "duracion_s": 0.673,
+      "filas": null,
+      "estado": "ok"
+    }
+  ],
+  "datos": {
+    "transacciones_leidas": 5000,
+    "logs_leidos": 5000
+  },
+  "entorno": {
+    "python": "3.12.10",
+    "sistema": "Windows-11-10.0.26200-SP0",
+    "spark": "3.5.3",
+    "master": "local[*]",
+    "paralelismo": 16,
+    "shuffle_partitions": "200",
+    "zona_horaria": "America/Bogota"
+  }
+}
