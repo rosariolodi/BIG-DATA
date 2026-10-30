@@ -27,14 +27,15 @@ def _filtrar_fechas_validas(df: DataFrame, columna: str = "timestamp") -> DataFr
     )
 
 
-def ejecutar_limpieza_transacciones(spark: SparkSession) -> DataFrame:
+def ejecutar_limpieza_transacciones(spark: SparkSession, df_raw: DataFrame = None) -> DataFrame:
     """
-    1. Llama los datos crudos de transacciones desde la capa raw.
+    1. Llama los datos crudos de transacciones desde la capa raw (o usa `df_raw` si ya se ingirió).
     2. Aplica la limpieza inicial, estandarización de texto, tratamiento de nulos
        y descarte de fechas futuras.
     """
     # Llamado de datos desde raw (usando la función de ingestión)
-    df_raw = leer_transacciones_csv(spark)
+    if df_raw is None:
+        df_raw = leer_transacciones_csv(spark)
 
     # Limpieza y estandarización optimizada (Catalyst friendly)
     df_limpio = (
@@ -54,14 +55,15 @@ def ejecutar_limpieza_transacciones(spark: SparkSession) -> DataFrame:
     return _filtrar_fechas_validas(df_limpio)
 
 
-def ejecutar_limpieza_logs(spark: SparkSession) -> DataFrame:
+def ejecutar_limpieza_logs(spark: SparkSession, df_raw: DataFrame = None) -> DataFrame:
     """
-    1. Llama los datos crudos de logs de e-commerce desde la capa raw.
+    1. Llama los datos crudos de logs de e-commerce desde la capa raw (o usa `df_raw` si ya se ingirió).
     2. Aplica la limpieza inicial, estandarización de texto, tratamiento de nulos
        y descarte de fechas futuras.
     """
     # Llamado de datos desde raw (usando la función de ingestión)
-    df_raw = leer_logs_ecommerce_json(spark)
+    if df_raw is None:
+        df_raw = leer_logs_ecommerce_json(spark)
 
     # Limpieza y estandarización optimizada
     df_limpio = (
