@@ -13,7 +13,7 @@ hadoop_dir = Path(os.path.expanduser("~")) / ".hadoop"
 bin_dir = hadoop_dir / "bin"
 winutils_path = bin_dir / "winutils.exe"
 
-if not winutils_path.exists():
+if os.name == "nt" and not winutils_path.exists():  # solo en Windows (en Databricks/Linux no hace falta)
     try:
         bin_dir.mkdir(parents=True, exist_ok=True)
         url = "https://raw.githubusercontent.com/steveloughran/winutils/master/hadoop-3.0.0/bin/winutils.exe"
@@ -21,7 +21,8 @@ if not winutils_path.exists():
     except Exception:
         pass
 
-os.environ["HADOOP_HOME"] = str(hadoop_dir)
+if os.name == "nt":
+    os.environ["HADOOP_HOME"] = str(hadoop_dir)
 # ---------------------------------------------
 
 from pyspark.sql import SparkSession
@@ -30,9 +31,9 @@ from transformations.cleaning import ejecutar_limpieza_transacciones, ejecutar_l
 from transformations.joins import realizar_join_transacciones_logs, generar_agregaciones_negocio
 from transformations.agregaciones import ejecutar_agregaciones, guardar_resultados
 from utils.tiempos import RegistroTiempos, materializar
+from config.rutas import DIR_KPIS, DIR_TIEMPOS, EN_NUBE, escribir_delta
 
-# Carpeta de los logs de tiempos por etapa (Inciso 5.2)
-DIR_TIEMPOS = Path(__file__).resolve().parent.parent / "reports" / "tiempos"
+# Los logs de tiempos (Inciso 5.2) se guardan en DIR_TIEMPOS (ver config/rutas.py)
 
 def ejecutar_pipeline():
     registro = RegistroTiempos()
@@ -90,13 +91,15 @@ def ejecutar_pipeline():
         print("--- GUARDANDO RESULTADOS EN PARQUET ---")
 
         with registro.medir("persistencia", "kpis_negocio_categoria") as m:
-            # Crear la carpeta de destino si no existe
-            Path("data/processed/kpis_negocio_categoria").mkdir(parents=True, exist_ok=True)
-
-            # Convertir a Pandas y guardar como Parquet (evita el error de winutils/hadoop.dll en Windows)
-            df_pandas = df_resultado_negocio.toPandas()
-            df_pandas.to_parquet("data/processed/kpis_negocio_categoria/resultado.parquet", index=False)
-            m.filas = len(df_pandas)
+            if EN_NUBE:
+                # Azure: Delta Lake en la capa gold de ADLS Gen2
+                m.filas = escribir_delta(df_resultado_negocio, DIR_KPIS)
+            else:
+                # Local (Windows): Pandas + Parquet (evita el error de winutils/hadoop.dll)
+                Path("data/processed/kpis_negocio_categoria").mkdir(parents=True, exist_ok=True)
+                df_pandas = df_resultado_negocio.toPandas()
+                df_pandas.to_parquet("data/processed/kpis_negocio_categoria/resultado.parquet", index=False)
+                m.filas = len(df_pandas)
 
         # Agregaciones de negocio adicionales con SparkSQL y DataFrames (Inciso 4.2)
         with registro.medir("persistencia", "agregaciones_adicionales"):
