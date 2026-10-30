@@ -64,6 +64,6 @@ resource "azurerm_databricks_workspace" "dbx" {
   name                = "dbw-${local.nombre_base}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  sku                 = "standard"
+  sku                 = "premium"
   tags                = var.tags
 }
