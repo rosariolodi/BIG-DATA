@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from utils.tiempos import RegistroTiempos, materializar
+from utils.tiempos import COLUMNAS_HISTORIAL, RegistroTiempos, materializar
 
 
 def test_mide_duracion_y_filas_de_cada_subetapa():
@@ -93,3 +93,17 @@ def test_el_log_incluye_el_entorno_de_spark(spark, tmp_path):
     assert entorno["spark"] == spark.version
     assert entorno["zona_horaria"] == "America/Bogota"
     assert entorno["shuffle_partitions"] == spark.conf.get("spark.sql.shuffle.partitions")
+
+
+def test_a_csv_texto_tiene_las_columnas_del_historial_y_una_fila_por_subetapa():
+    registro = RegistroTiempos()
+    registro.corrida_id = "corrida_azure"
+    with registro.medir("ingestion", "csv") as m:
+        m.filas = 10
+    with registro.medir("persistencia", "delta") as m:
+        m.filas = 3
+    datos = registro.a_dict(extra={"transacciones_leidas": 5000, "logs_leidos": 5000})
+    filas = list(csv.DictReader(registro.a_csv_texto(datos).splitlines()))
+    assert list(filas[0].keys()) == COLUMNAS_HISTORIAL
+    assert [f["subetapa"] for f in filas] == ["csv", "delta"]
+    assert all(f["corrida_id"] == "corrida_azure" and f["transacciones_leidas"] == "5000" for f in filas)

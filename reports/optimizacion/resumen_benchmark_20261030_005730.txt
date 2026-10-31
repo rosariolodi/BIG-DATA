@@ -1,0 +1,18 @@
+BENCHMARK: FUNCIONES NATIVAS VS UDF DE PYTHON
+Fecha: 2026-10-30T00:57:30.641405
+Repeticiones por alternativa: 5
+
+NATIVA
+Promedio: 0.499988 s
+Mediana: 0.500895 s
+Mínimo: 0.397804 s
+Máximo: 0.628021 s
+
+UDF_PYTHON
+Promedio: 1.109716 s
+Mediana: 1.103674 s
+Mínimo: 1.051046 s
+Máximo: 1.198673 s
+
+Diferencia porcentual (UDF frente a nativa): 121.95%
+Interpretación: un valor positivo indica que la UDF tardó más en promedio en esta prueba; un valor negativo indica que tardó menos. El resultado es específico de esta ejecución.
