@@ -30,6 +30,8 @@ data/processed/
     └── kpis_por_categoria/fecha_proceso=2026-10-28/part-....parquet
 ```
 
+En Azure (variable `DATAMARCA_STORAGE`, ver `src/config/rutas.py`) cada capa usa su contenedor de ADLS Gen2: `abfss://silver@<cuenta>.dfs.core.windows.net/silver/<tabla>` y `abfss://gold@<cuenta>.dfs.core.windows.net/gold/<tabla>`, en formato Delta. Quedan separadas de las tablas Delta sin particionar que escribían versiones anteriores del pipeline en la raíz del contenedor `gold`. La integración con el registro de tiempos (tarea 5.2) mide la persistencia en las subetapas `silver` y `gold`.
+
 ## 2. Decisiones de implementación
 
 | Decisión | Motivo |
