@@ -1,0 +1,91 @@
+{
+  "corrida_id": "20261031_022527",
+  "inicio": "2026-10-31T02:25:27",
+  "total_s": 182.156,
+  "estado": "ok",
+  "etapas_s": {
+    "ingestion": 50.343,
+    "transformacion": 60.342,
+    "persistencia": 59.451
+  },
+  "sin_etapa_s": 12.02,
+  "subetapas": [
+    {
+      "etapa": "ingestion",
+      "subetapa": "transacciones_csv",
+      "inicio": "2026-10-31T02:25:36",
+      "duracion_s": 33.803,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "ingestion",
+      "subetapa": "logs_json",
+      "inicio": "2026-10-31T02:26:09",
+      "duracion_s": 16.54,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "limpieza_transacciones",
+      "inicio": "2026-10-31T02:26:26",
+      "duracion_s": 5.352,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "limpieza_logs",
+      "inicio": "2026-10-31T02:26:31",
+      "duracion_s": 4.953,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "join",
+      "inicio": "2026-10-31T02:26:36",
+      "duracion_s": 15.706,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "agregaciones",
+      "inicio": "2026-10-31T02:26:52",
+      "duracion_s": 34.331,
+      "filas": 71,
+      "estado": "ok"
+    },
+    {
+      "etapa": "persistencia",
+      "subetapa": "silver",
+      "inicio": "2026-10-31T02:27:30",
+      "duracion_s": 35.458,
+      "filas": 10000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "persistencia",
+      "subetapa": "gold",
+      "inicio": "2026-10-31T02:28:05",
+      "duracion_s": 23.993,
+      "filas": 71,
+      "estado": "ok"
+    }
+  ],
+  "datos": {
+    "transacciones_leidas": 5000,
+    "logs_leidos": 5000
+  },
+  "entorno": {
+    "python": "3.13.18",
+    "sistema": "Linux-6.6.159+-x86_64-with-glibc2.39",
+    "spark": "3.5.3",
+    "shuffle_partitions": "200",
+    "zona_horaria": "America/Bogota",
+    "master": "local[*]",
+    "paralelismo": 2
+  }
+}
