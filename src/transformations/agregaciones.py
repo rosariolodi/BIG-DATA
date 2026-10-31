@@ -22,6 +22,8 @@ from typing import Dict
 from pyspark.sql import DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
 
+from config.rutas import DIR_GOLD, EN_NUBE, escribir_delta
+
 VISTA_VENTAS = "ventas_enriquecidas"
 ZONA_HORARIA = "America/Bogota"
 
@@ -187,6 +189,11 @@ def guardar_resultados(resultados: Dict[str, DataFrame], directorio: str = "data
     Se usa pandas, igual que src/main.py, para evitar el problema de winutils/hadoop.dll en Windows.
     """
     for nombre, df in resultados.items():
+        if EN_NUBE:
+            destino = f"{DIR_GOLD}/{nombre}"
+            escribir_delta(df, destino)
+            print(f"[Agregaciones] {nombre}: {destino} (delta)")
+            continue
         carpeta = Path(directorio) / nombre
         carpeta.mkdir(parents=True, exist_ok=True)
         df.toPandas().to_parquet(carpeta / "resultado.parquet", index=False)

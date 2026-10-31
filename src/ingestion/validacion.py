@@ -18,6 +18,7 @@ from typing import Dict, List
 from pyspark.sql import Column, DataFrame, Window
 from pyspark.sql import functions as F
 
+from config.rutas import EN_NUBE
 from config.schemas import (
     DOMINIO_LOGS,
     DOMINIO_TRANSACCIONES,
@@ -255,6 +256,13 @@ def guardar_resultado_validacion(resultado: ResultadoValidacion, directorio: str
     Se usa pandas para escribir, igual que src/main.py, para evitar el problema
     de winutils/hadoop.dll de Spark en Windows.
     """
+    if EN_NUBE:
+        # En Azure se escribe con Spark directamente en ADLS Gen2 (no hay disco local persistente)
+        resultado.cuarentena.write.mode("overwrite").parquet(f"{directorio}/cuarentena_{resultado.fuente}")
+        spark = resultado.cuarentena.sparkSession
+        (spark.createDataFrame([(json.dumps(resultado.metricas, ensure_ascii=False, default=str),)], ["json"])
+              .coalesce(1).write.mode("overwrite").text(f"{directorio}/metricas_{resultado.fuente}"))
+        return
     carpeta = Path(directorio)
     carpeta.mkdir(parents=True, exist_ok=True)
     resultado.cuarentena.toPandas().to_parquet(carpeta / f"cuarentena_{resultado.fuente}.parquet", index=False)
