@@ -15,6 +15,7 @@ Uso:
     registro.guardar("reports/tiempos", spark, {"transacciones_leidas": 5000})
 """
 import csv
+import io
 import json
 import platform
 import time
@@ -144,6 +145,44 @@ class RegistroTiempos:
             "entorno": entorno,
         }
 
+    def _fila_historial(self, s: Dict, datos: Dict) -> Dict:
+        """Fila del historial para una subetapa (mismas columnas que historial_tiempos.csv)."""
+        return {"corrida_id": self.corrida_id, "inicio": s["inicio"], "etapa": s["etapa"],
+                "subetapa": s["subetapa"], "duracion_s": s["duracion_s"], "filas": s["filas"],
+                "estado": s["estado"],
+                "transacciones_leidas": datos["datos"].get("transacciones_leidas"),
+                "logs_leidos": datos["datos"].get("logs_leidos"),
+                "shuffle_partitions": datos["entorno"].get("shuffle_partitions")}
+
+    def a_csv_texto(self, datos: Dict) -> str:
+        """CSV de esta corrida (una fila por subetapa), como texto."""
+        salida = io.StringIO()
+        escritor = csv.DictWriter(salida, fieldnames=COLUMNAS_HISTORIAL, lineterminator="\n")
+        escritor.writeheader()
+        for s in self.subetapas:
+            escritor.writerow(self._fila_historial(s, datos))
+        return salida.getvalue()
+
+    def publicar(self, destino: str, spark, extra: Optional[Dict] = None) -> None:
+        """
+        Azure: guarda el JSON y el CSV de esta corrida en ADLS Gen2, porque el disco del driver
+        de Databricks es temporal. Spark escribe cada texto en una carpeta con un único archivo
+        part-*:
+            <destino>/json/tiempos_<corrida>/part-*.txt   (mismo contenido que tiempos_<corrida>.json)
+            <destino>/csv/tiempos_<corrida>/part-*.txt    (mismo formato que historial_tiempos.csv)
+        """
+        self.finalizar()
+        datos = self.a_dict(spark, extra)
+        textos = {
+            "json": json.dumps(datos, ensure_ascii=False, indent=2),
+            "csv": self.a_csv_texto(datos),
+        }
+        for formato, texto in textos.items():
+            ruta = f"{destino}/{formato}/tiempos_{self.corrida_id}"
+            (spark.createDataFrame([(texto,)], "contenido string")
+                  .coalesce(1).write.mode("overwrite").text(ruta))
+            print(f"[Tiempos] {formato.upper()} publicado en {ruta}")
+
     def guardar(self, directorio, spark=None, extra: Optional[Dict] = None) -> Path:
         """
         Escribe `tiempos_<corrida>.json` (detalle de esta corrida) y agrega una fila por subetapa
@@ -166,11 +205,6 @@ class RegistroTiempos:
             if nuevo:
                 escritor.writeheader()
             for s in self.subetapas:
-                escritor.writerow({"corrida_id": self.corrida_id, "inicio": s["inicio"], "etapa": s["etapa"],
-                                   "subetapa": s["subetapa"], "duracion_s": s["duracion_s"], "filas": s["filas"],
-                                   "estado": s["estado"],
-                                   "transacciones_leidas": datos["datos"].get("transacciones_leidas"),
-                                   "logs_leidos": datos["datos"].get("logs_leidos"),
-                                   "shuffle_partitions": datos["entorno"].get("shuffle_partitions")})
+                escritor.writerow(self._fila_historial(s, datos))
         print(f"[Tiempos] Log guardado en {ruta_json}")
         return ruta_json

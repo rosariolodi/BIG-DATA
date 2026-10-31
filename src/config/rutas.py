@@ -32,8 +32,9 @@ if EN_NUBE:
     DIR_CALIDAD = _abfss("silver", "quarantine")
     DIR_GOLD = _abfss("gold")
     DIR_KPIS = _abfss("gold", "kpis_negocio_categoria")
-    # El disco del driver es temporal: los logs de tiempos quedan en el log del job
+    # El disco del driver es temporal; por eso los tiempos también se publican en ADLS (DIR_TIEMPOS_NUBE)
     DIR_TIEMPOS = Path(tempfile.gettempdir()) / "tiempos"
+    DIR_TIEMPOS_NUBE = _abfss("gold", "reports/tiempos")
 else:
     CSV_TRANSACCIONES = str(ROOT_DIR / "data" / "raw" / "DATAMARCA_transacciones_5000_real.csv")
     JSON_LOGS = str(ROOT_DIR / "data" / "raw" / "ecommerce_logs_5000.json")
@@ -41,6 +42,7 @@ else:
     DIR_GOLD = str(ROOT_DIR / "data" / "processed")
     DIR_KPIS = str(ROOT_DIR / "data" / "processed" / "kpis_negocio_categoria")
     DIR_TIEMPOS = ROOT_DIR / "reports" / "tiempos"
+    DIR_TIEMPOS_NUBE = None
 
 
 def escribir_delta(df, ruta: str, modo: str = "overwrite") -> int:
