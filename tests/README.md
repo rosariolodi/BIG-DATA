@@ -5,6 +5,7 @@ Pruebas con `pytest` sobre Spark local. No leen los archivos de `data/raw/`: gen
 | Archivo | Qué prueba |
 |---|---|
 | `test_validacion.py` | Reglas de calidad de `docs/reglas_calidad.md` (tarea 2.2): cada regla crítica rechaza a cuarentena con el ID correcto, las advertencias no rechazan, duplicados, métricas y la regresión del JSON con un valor mal tipado |
+| `test_idempotencia.py` | Reprocesar el mismo lote dos veces da el mismo resultado: agregaciones idénticas, totales sin duplicar, archivos de salida y cuarentena reemplazados y no acumulados (prueba P4 del informe de la Unidad 2) |
 | `test_tiempos.py` | Registro de tiempos por etapa (tarea 5.2): duración, filas, estados de error, suma por etapa, JSON e historial CSV |
 | `test_agregaciones.py` | Agregaciones de la tarea 4.2 con un conjunto calculado a mano: por tienda, método de pago, día (en hora de Bogotá), top de clientes, y que SparkSQL coincida con la API de DataFrames |
 
@@ -19,7 +20,7 @@ pip install -r tests/requirements-test.txt
 pytest tests -v
 ```
 
-Resultado esperado: `35 passed`. Tarda cerca de 1,5 minutos por el arranque de Spark.
+Resultado esperado: todas las pruebas en `passed` y ninguna en `failed`. Tarda unos 2 minutos por el arranque de Spark.
 
 ## Notas
 
