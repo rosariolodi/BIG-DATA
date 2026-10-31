@@ -1,0 +1,19 @@
+{
+  "corrida_id": "20261031_032732",
+  "inicio": "2026-10-31T03:27:32",
+  "total_s": 0.511,
+  "estado": "ok",
+  "etapas_s": {},
+  "sin_etapa_s": 0.511,
+  "subetapas": [],
+  "datos": {},
+  "entorno": {
+    "python": "3.12.3",
+    "sistema": "Linux-6.8.0-1064-azure-x86_64-with-glibc2.39",
+    "spark": "4.1.0",
+    "shuffle_partitions": "200",
+    "zona_horaria": "Etc/UTC",
+    "master": "spark-connect",
+    "paralelismo": null
+  }
+}
