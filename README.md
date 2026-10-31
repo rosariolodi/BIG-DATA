@@ -306,12 +306,3 @@ Cada fuente se lee con **esquema estricto** (sin `inferSchema`) y se valida con 
 ## Flujo de trabajo en Git
 
 Se trabaja en ramas propias y se integra a `main` mediante pull request (plantilla en `.github/pull_request_template.md`). Los commits siguen el formato semántico descrito en [`docs/politica_git.md`](docs/politica_git.md), por ejemplo `feat(azure): ...`.
-
-## Pendientes
-
-- Ordenar la evidencia de Azure: hay dos corridas vacías (0,5 s, sin etapas) y solo una usa la persistencia particionada actual; conviene dejar una corrida final de referencia y retirar o anotar las vacías.
-- Eliminar `tmp_tiempos/`, carpeta con restos de la descarga de los logs de Azure que quedó versionada por error.
-- Workflow de GitHub Actions en `.github/workflows/` (tests y despliegue automático).
-- Corregir la codificación de las tildes del CSV de transacciones (`Lácteos` y `Panadería` llegan con doble codificación y la regla `T-D02` las marca como advertencia).
-- Decidir el valor por defecto de `spark.sql.shuffle.partitions` con la evidencia de la tarea 5.1.
-- Informe técnico final (tarea 6.3).
