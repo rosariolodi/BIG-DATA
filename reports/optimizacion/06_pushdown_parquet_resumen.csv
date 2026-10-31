@@ -1,0 +1,7 @@
+caso,descripcion,columnas_leidas,filtros_empujados,filtros_de_particion,archivos_leidos,archivos_totales,bytes_de_archivos_abiertos,bytes_totales,pct_bytes_de_archivos_abiertos,filas_leidas
+A,"Referencia: todas las columnas, sin filtro",8,[],[],31,31,207522,207522,100.0,5000
+B,Column pruning: solo transaction_id y amount_cop,2,[],[],31,31,207522,207522,100.0,5000
+C,Predicate pushdown: amount_cop > 100000,2,"[IsNotNull(amount_cop), GreaterThan(amount_cop,100000)]",[],31,31,207522,207522,100.0,5000
+D,Partition pruning: fecha = 2026-09-20,2,[],"[isnotnull(fecha#8), (fecha#8 = 2026-09-20)]",1,31,6786,207522,3.3,166
+E,Combinado: fecha entre 2026-09-20 y 2026-09-22 y amount_cop > 100000,2,"[IsNotNull(amount_cop), GreaterThan(amount_cop,100000)]","[isnotnull(fecha#8), (fecha#8 >= 2026-09-20), (fecha#8 <= 2026-09-22)]",3,31,20118,207522,9.7,482
+F,Contraste: el mismo filtro de C con una UDF de Python,2,[],[],,31,,207522,,
