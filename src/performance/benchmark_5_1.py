@@ -233,7 +233,7 @@ def main():
                .appName('DATAMARCA-Benchmark-5-1')
                .config('spark.sql.session.timeZone', 'America/Bogota')
                .config('spark.sql.sources.partitionOverwriteMode', 'dynamic')
-               .config('spark.sql.shuffle.partitions', '8')
+               .config('spark.sql.shuffle.partitions', os.environ.get('SHUFFLE_PARTITIONS','8'))
                .config('spark.ui.enabled', 'false'))
     # No utilizar credenciales ni rutas Azure en el benchmark.
     spark = builder.getOrCreate()
