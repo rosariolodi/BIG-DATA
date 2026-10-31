@@ -31,7 +31,7 @@ from transformations.cleaning import ejecutar_limpieza_transacciones, ejecutar_l
 from transformations.joins import realizar_join_transacciones_logs, generar_agregaciones_negocio
 from transformations.agregaciones import ejecutar_agregaciones, guardar_resultados
 from utils.tiempos import RegistroTiempos, materializar
-from config.rutas import DIR_KPIS, DIR_TIEMPOS, EN_NUBE, escribir_delta
+from config.rutas import DIR_KPIS, DIR_TIEMPOS, DIR_TIEMPOS_NUBE, EN_NUBE, escribir_delta
 
 # Los logs de tiempos (Inciso 5.2) se guardan en DIR_TIEMPOS (ver config/rutas.py)
 
@@ -111,6 +111,12 @@ def ejecutar_pipeline():
         registro.finalizar()
         registro.imprimir()
         registro.guardar(DIR_TIEMPOS, spark, datos_corrida)
+        if EN_NUBE:
+            # El disco del driver se pierde al apagar el cluster: la evidencia queda en ADLS Gen2
+            try:
+                registro.publicar(DIR_TIEMPOS_NUBE, spark, datos_corrida)
+            except Exception as e:  # publicar los tiempos no debe tumbar un pipeline ya terminado
+                print(f"[Tiempos] No se pudieron publicar en {DIR_TIEMPOS_NUBE}: {e}")
         spark.stop()
 
 if __name__ == "__main__":
