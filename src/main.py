@@ -44,18 +44,25 @@ from pyspark.sql import SparkSession
 from ingestion.reader import ingestar_transacciones, ingestar_logs_ecommerce
 from transformations.cleaning import ejecutar_limpieza_transacciones, ejecutar_limpieza_logs
 from transformations.joins import realizar_join_transacciones_logs, generar_agregaciones_negocio
-from transformations.agregaciones import ejecutar_agregaciones, guardar_resultados
+from transformations.agregaciones import ejecutar_agregaciones
 from utils.tiempos import RegistroTiempos, materializar
-from config.rutas import DIR_KPIS, DIR_TIEMPOS, DIR_TIEMPOS_NUBE, EN_NUBE, escribir_delta
+from config.rutas import DIR_TIEMPOS, DIR_TIEMPOS_NUBE, EN_NUBE, _abfss
 from persistence.writer import configurar_builder, preparar_persistencia, persistir_silver, persistir_gold
 
-# Sin variable adicional se mantiene la persistencia actual de main.
-# DATAMARCA_PERSISTENCE=writer habilita la persistencia 4.3 de joel.
-MODO_PERSISTENCIA = os.environ.get("DATAMARCA_PERSISTENCE", "main").lower()
-if MODO_PERSISTENCIA not in ("main", "writer"):
-    raise ValueError("DATAMARCA_PERSISTENCE debe ser 'main' o 'writer'")
-
 # Los logs de tiempos (Inciso 5.2) se guardan en DIR_TIEMPOS (ver config/rutas.py)
+
+
+def _raices_persistencia(raiz_local: str) -> dict:
+    """
+    Raíz de cada capa para la persistencia particionada (Inciso 4.3).
+    Local: data/processed (o DATAMARCA_STORAGE_ROOT). Azure: el contenedor de cada capa en ADLS Gen2
+    (ver config/rutas.py); las tablas quedan en <contenedor>/<capa>/<tabla>, separadas de las
+    tablas Delta sin particionar de corridas anteriores.
+    """
+    if EN_NUBE:
+        return {"silver": _abfss("silver"), "gold": _abfss("gold")}
+    return {"silver": raiz_local, "gold": raiz_local}
+
 
 def ejecutar_pipeline():
     registro = RegistroTiempos()
@@ -70,14 +77,16 @@ def ejecutar_pipeline():
     # Spark usa su valor por defecto (200 particiones de shuffle).
     if os.environ.get("SHUFFLE_PARTITIONS"):
         constructor = constructor.config("spark.sql.shuffle.partitions", os.environ["SHUFFLE_PARTITIONS"])
-    if MODO_PERSISTENCIA == "writer":
-        constructor = configurar_builder(constructor)
-    spark = constructor.getOrCreate()
-    formato = raiz = None
+    # Delta y el conector de ADLS se agregan según la configuración de la persistencia (Inciso 4.3)
+    spark = configurar_builder(constructor).getOrCreate()
+    # En Databricks la sesión ya existe y el .config() del builder no se aplica: se fija en la sesión.
+    # La partición por día (docs/particionamiento.md) exige America/Bogota.
+    spark.conf.set("spark.sql.session.timeZone", "America/Bogota")
 
     try:
-        if MODO_PERSISTENCIA == "writer":
-            formato, raiz = preparar_persistencia(spark)
+        formato, raiz = preparar_persistencia(spark)
+        raices = _raices_persistencia(raiz)
+
         print("--- INICIO DE LIMPIEZA Y JOINS DISTRIBUIDOS ---")
 
         # 2. Ingestión: lectura con esquema estricto y validación de calidad (Incisos 2.1 y 2.2)
@@ -99,11 +108,6 @@ def ejecutar_pipeline():
             df_clean_logs = ejecutar_limpieza_logs(spark, ingesta_logs.validos)
             m.filas = materializar(df_clean_logs)
 
-        # Persistencia Silver 4.3, conservada como opcion de la rama joel.
-        if MODO_PERSISTENCIA == "writer":
-            with registro.medir("persistencia", "silver"):
-                persistir_silver(df_clean_tx, df_clean_logs, formato, raiz)
-
         # Desarrollo de Joins Distribuidos (Inciso 4.1)
         with registro.medir("transformacion", "join") as m:
             df_joined = realizar_join_transacciones_logs(df_clean_tx, df_clean_logs)
@@ -119,30 +123,17 @@ def ejecutar_pipeline():
         print("--- RESULTADOS DE LAS AGREGACIONES POR CATEGORÍA ---")
         df_resultado_negocio.show(10, truncate=False)
 
-        # Persistencia: predeterminado main; opcionalmente Silver/Gold de 4.3.
-        if MODO_PERSISTENCIA == "writer":
-            print("--- PERSISTENCIA GOLD (4.3) ---")
-            with registro.medir("persistencia", "gold"):
-                persistir_gold(
-                    {"kpis_negocio_categoria": df_resultado_negocio, **resultados_agregaciones},
-                    formato,
-                    raiz,
-                )
-        else:
-            # Conservar la ruta original de main (local Parquet / Azure Delta).
-            print("--- GUARDANDO RESULTADOS EN PARQUET ---")
-            with registro.medir("persistencia", "kpis_negocio_categoria") as m:
-                if EN_NUBE:
-                    m.filas = escribir_delta(df_resultado_negocio, DIR_KPIS)
-                else:
-                    Path("data/processed/kpis_negocio_categoria").mkdir(parents=True, exist_ok=True)
-                    df_pandas = df_resultado_negocio.toPandas()
-                    df_pandas.to_parquet(
-                        "data/processed/kpis_negocio_categoria/resultado.parquet", index=False
-                    )
-                    m.filas = len(df_pandas)
-            with registro.medir("persistencia", "agregaciones_adicionales"):
-                guardar_resultados(resultados_agregaciones, "data/processed")
+        # 4. Persistencia en Parquet o Delta particionado (Inciso 4.3, ver docs/persistencia.md).
+        # silver: transacciones y logs limpios por `fecha`; gold: agregaciones por `mes` o `fecha_proceso`.
+        # En Windows sin hadoop.dll el módulo escribe el mismo layout con pyarrow.
+        print(f"--- PERSISTENCIA PARTICIONADA ({formato}) ---")
+        with registro.medir("persistencia", "silver") as m:
+            tablas = persistir_silver(df_clean_tx, df_clean_logs, formato, raices["silver"])
+            m.filas = sum(t.filas for t in tablas)
+        with registro.medir("persistencia", "gold") as m:
+            gold = {"kpis_negocio_categoria": df_resultado_negocio, **resultados_agregaciones}
+            tablas = persistir_gold(gold, formato, raices["gold"])
+            m.filas = sum(t.filas for t in tablas)
 
         print(f"--- PIPELINE COMPLETADO EXITOSAMENTE (Tiempo total: {registro.total_s:.2f} s) ---")
     finally:
