@@ -24,14 +24,13 @@ from ingestion.validacion import (
     validar_transacciones,
 )
 
-# Calculamos la ruta absoluta de la raíz del proyecto de forma dinámica:
-# reader.py -> ingestion/ -> src/ -> [RAÍZ DEL PROYECTO]
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-
-DEFAULT_CSV_PATH = str(ROOT_DIR / "data" / "raw" / "DATAMARCA_transacciones_5000_real.csv")
-DEFAULT_JSON_PATH = str(ROOT_DIR / "data" / "raw" / "ecommerce_logs_5000.json")
-# Carpeta donde se guardan la cuarentena y las métricas de calidad de cada ejecución
-DEFAULT_CALIDAD_DIR = str(ROOT_DIR / "data" / "quarantine")
+# Las rutas salen de config/rutas.py: carpetas locales por defecto, o ADLS Gen2 (bronze/silver)
+# cuando existe la variable de entorno DATAMARCA_STORAGE.
+from config.rutas import (
+    CSV_TRANSACCIONES as DEFAULT_CSV_PATH,
+    JSON_LOGS as DEFAULT_JSON_PATH,
+    DIR_CALIDAD as DEFAULT_CALIDAD_DIR,
+)
 
 # En un JSON multiLine (array), un valor con el tipo equivocado marca TODOS los registros
 # del archivo como corruptos (el "registro corrupto" es el documento completo). Por eso los

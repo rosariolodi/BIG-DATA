@@ -1,0 +1,11 @@
+repeticion,alternativa,tiempo_segundos,valores_no_nulos,suma_longitudes
+1,nativa,0.522152,5000,40000
+1,udf_python,1.109317,5000,40000
+2,udf_python,1.198673,5000,40000
+2,nativa,0.628021,5000,40000
+3,nativa,0.45107,5000,40000
+3,udf_python,1.051046,5000,40000
+4,udf_python,1.085871,5000,40000
+4,nativa,0.500895,5000,40000
+5,nativa,0.397804,5000,40000
+5,udf_python,1.103674,5000,40000
