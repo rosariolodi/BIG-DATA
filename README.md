@@ -92,7 +92,7 @@ Ninguna variable ni credencial se versiona. Los valores se definen en cada entor
 | `DATAMARCA_STORAGE` | Entorno del proceso o del cluster | Solo en Azure | Nombre de la cuenta ADLS Gen2. Si existe, el pipeline lee de `bronze` y escribe en `silver`/`gold`. Si no existe, corre en local |
 | `SHUFFLE_PARTITIONS` | Entorno del proceso o del cluster | No | Número de particiones de shuffle de Spark (`spark.sql.shuffle.partitions`). Por defecto, el de Spark (200). Se usa en las pruebas de rendimiento |
 | `subscription_id` | `azure/infrastructure/terraform.tfvars` | Para Terraform | ID de la suscripción de Azure |
-| `location` | `azure/infrastructure/terraform.tfvars` | No | Región de Azure (por defecto `eastus2`) |
+| `location` | `azure/infrastructure/terraform.tfvars` | No | Región de Azure (`mexicocentral`) |
 | Clave de la cuenta de almacenamiento | Secret scope `datamarca`, secreto `storage-key` | Para Databricks | Acceso del cluster a ADLS Gen2. El cluster la lee con `{{secrets/datamarca/storage-key}}` |
 | Inicio de sesión de Azure y Databricks | `az login` y `databricks auth login` | Para el despliegue | Autenticación de las CLI |
 
