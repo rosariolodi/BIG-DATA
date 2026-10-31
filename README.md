@@ -83,6 +83,43 @@ Las pruebas generan sus propios datos pequeños y no leen `data/raw/`. Más deta
 
 ---
 
+## Variables de entorno y credenciales
+
+Ninguna variable ni credencial se versiona. Los valores se definen en cada entorno.
+
+| Variable / credencial | Dónde se define | Obligatoria | Para qué sirve |
+|---|---|---|---|
+| `DATAMARCA_STORAGE` | Entorno del proceso o del cluster | Solo en Azure | Nombre de la cuenta ADLS Gen2. Si existe, el pipeline lee de `bronze` y escribe en `silver`/`gold`. Si no existe, corre en local |
+| `SHUFFLE_PARTITIONS` | Entorno del proceso o del cluster | No | Número de particiones de shuffle de Spark (`spark.sql.shuffle.partitions`). Por defecto, el de Spark (200). Se usa en las pruebas de rendimiento |
+| `subscription_id` | `azure/infrastructure/terraform.tfvars` | Para Terraform | ID de la suscripción de Azure |
+| `location` | `azure/infrastructure/terraform.tfvars` | No | Región de Azure (por defecto `eastus2`) |
+| Clave de la cuenta de almacenamiento | Secret scope `datamarca`, secreto `storage-key` | Para Databricks | Acceso del cluster a ADLS Gen2. El cluster la lee con `{{secrets/datamarca/storage-key}}` |
+| Inicio de sesión de Azure y Databricks | `az login` y `databricks auth login` | Para el despliegue | Autenticación de las CLI |
+
+## Reproducir la ejecución en un entorno limpio
+
+**Local** (desde la raíz del repositorio, con Python 3.12 y Java 17 o 21):
+
+```bash
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+pip install -r tests/requirements-test.txt
+python src/main.py
+```
+
+**Azure** (desde cero; el detalle de cada paso está en la sección siguiente):
+
+```powershell
+# 1. Infraestructura
+cd azure\infrastructure
+terraform init; terraform apply
+# 2. Datos, acceso al storage, código y job: pasos 2 a 4
+# 3. Ejecución
+databricks jobs run-now <job_id>
+```
+
+---
+
 ## Despliegue en Azure
 
 ### Requisitos previos
@@ -175,6 +212,38 @@ az storage blob list --account-name $cuenta --container-name gold --auth-mode ke
 
 En `gold` deben aparecer las carpetas Delta de los resultados y en `silver/quarantine` la cuarentena de la validación.
 
+### 6. Evidencia de la ejecución (tiempos por etapa)
+
+En cada corrida en Azure, `main.py` publica el log de tiempos en el Data Lake, porque el disco del driver de Databricks se pierde al apagar el cluster:
+
+```
+gold/reports/tiempos/json/tiempos_<AAAAMMDD_HHMMSS>/part-*.txt   detalle de la corrida (JSON)
+gold/reports/tiempos/csv/tiempos_<AAAAMMDD_HHMMSS>/part-*.txt    una fila por subetapa (CSV)
+```
+
+El JSON incluye tiempo total, tiempo por etapa (ingestión, transformación, persistencia), filas, estado y el entorno (versiones de Python y Spark). Para guardarlo como evidencia en el repositorio:
+
+```powershell
+az storage blob download-batch --account-name $cuenta --source gold --pattern "reports/tiempos/*part-*" --destination .\tmp_tiempos --auth-mode key
+New-Item -ItemType Directory -Force reports\tiempos\evidencia\azure | Out-Null
+Get-ChildItem .\tmp_tiempos -Recurse -Filter "part-*" | ForEach-Object {
+    Copy-Item $_.FullName "reports\tiempos\evidencia\azure\$($_.Directory.Name).$($_.Directory.Parent.Name)"
+}
+Remove-Item .\tmp_tiempos -Recurse
+```
+
+Quedan archivos como `reports/tiempos/evidencia/azure/tiempos_<id>.json` y `.csv`. La salida completa del job (calidad de datos, tabla de tiempos y `PIPELINE COMPLETADO`) se puede ver en la corrida, dentro de **Jobs & Pipelines** en Databricks.
+
+### Supuestos del entorno cloud
+
+- Proveedor: Microsoft Azure, suscripción Azure for Students (regiones restringidas por política).
+- Almacenamiento: ADLS Gen2 (cuenta `StorageV2` con namespace jerárquico, LRS) con los contenedores `bronze`, `silver` y `gold`.
+- Cómputo: Azure Databricks, workspace SKU `premium`, cluster de acceso compartido (Spark Connect) con auto-apagado. Versión de Databricks Runtime: `<completar>`.
+- Formato de salida: Delta Lake en `gold`; la cuarentena de calidad se guarda en Parquet en `silver/quarantine`.
+- Autenticación al storage: clave de la cuenta en un secret scope (adecuado para desarrollo).
+- Volumen de la prueba: 5.000 transacciones y 5.000 eventos de e-commerce.
+- El pipeline no mantiene estado entre corridas: cada ejecución sobrescribe sus resultados.
+
 ### Costos y limpieza
 
 - El workspace y el almacenamiento cuestan poco; el gasto principal es el **cluster de Databricks**. Activa el auto-apagado y termínalo al acabar.
@@ -182,7 +251,7 @@ En `gold` deben aparecer las carpetas Delta de los resultados y en `silver/quara
 
 ### Notas de seguridad
 
-- Nunca versiones `terraform.tfvars`, `*.tfstate`, claves, tokens ni archivos `.env`.
+- Nunca versiones `terraform.tfvars`, `*.tfstate`, claves, tokens ni archivos `.env`. Antes de cada commit revisa `git status`.
 - La clave de cuenta en un secret scope sirve para desarrollo. Para producción es preferible usar identidades administradas o Unity Catalog.
 - En clusters de acceso compartido no está disponible `spark.sparkContext`; el código ya lo tiene en cuenta.
 
@@ -194,7 +263,7 @@ Cada fuente se lee con **esquema estricto** (sin `inferSchema`) y se valida con 
 
 ## Rendimiento y optimización
 
-- **Tiempos por etapa:** cada ejecución registra duración y filas por subetapa. Ver [`reports/tiempos/README.md`](reports/tiempos/README.md).
+- **Tiempos por etapa:** cada ejecución registra duración y filas por subetapa. En local se guardan en `reports/tiempos/`; en Azure, en `gold/reports/tiempos/` (ver paso 6). Evidencias en `reports/tiempos/evidencia/` y detalle en [`reports/tiempos/README.md`](reports/tiempos/README.md).
 - **Optimizador Catalyst:** los análisis y benchmarks (column pruning, predicate pushdown, funciones nativas vs UDF de Python, joins) están en `src/optimization/` y sus evidencias en `reports/optimizacion/`.
 
 ## Documentación
