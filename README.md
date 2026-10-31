@@ -283,7 +283,8 @@ Cada fuente se lee con **esquema estricto** (sin `inferSchema`) y se valida con 
 
 ## Rendimiento y optimización
 
-- **Tiempos por etapa:** cada ejecución registra duración y filas por subetapa (ingestión, transformación y persistencia). Spark es perezoso, por eso cada subetapa termina con `cache` y `count`: así el tiempo cae en la etapa que hizo el trabajo. En local se guardan en `reports/tiempos/`; en Azure, en `gold/reports/tiempos/` (ver paso 6). Evidencias en `reports/tiempos/evidencia/` (incluye una corrida en Linux) y detalle en [`reports/tiempos/README.md`](reports/tiempos/README.md). Los tiempos son de equipos locales, no de la nube, y varían entre corridas: sirven para comparar etapas y configuraciones.
+- **Tiempos por etapa:** cada ejecución registra duración y filas por subetapa (ingestión, transformación y persistencia). Spark es perezoso, por eso cada subetapa termina con `cache` y `count`: así el tiempo cae en la etapa que hizo el trabajo. En local se guardan en `reports/tiempos/`; en Azure, en `gold/reports/tiempos/` (ver paso 6). Evidencias en `reports/tiempos/evidencia/` (corridas locales y una corrida en Linux) y en `reports/tiempos/evidencia/azure/` (corridas en Azure Databricks); detalle en [`reports/tiempos/README.md`](reports/tiempos/README.md). Los tiempos varían mucho entre corridas y entre equipos: sirven para comparar etapas y configuraciones, no como cifra absoluta.
+- **Corridas en Azure:** `reports/tiempos/evidencia/azure/` tiene 7 corridas en Azure Databricks (Spark 4.1.0 por Spark Connect, Python 3.12.3). Cinco procesaron los 5.000 registros de cada fuente, con totales entre 52 s y 165 s. Solo la última (`tiempos_20261031_034517`) usa la persistencia particionada en `silver` y `gold` (35 s y 30 s); las anteriores corresponden a versiones previas del pipeline. Las otras dos (`032732` y `034151`) duran 0,5 s y no registran etapas.
 - **Particiones de shuffle:** con 5.000 filas, `SHUFFLE_PARTITIONS=8` bajó el total de unos 54 s (valor por defecto, 200) a unos 23 s en una comparación de dos corridas por configuración. La comparación se repite con más volumen en la tarea 5.1; el valor por defecto de `main.py` no se ha cambiado.
 - **Volumen y carga 3x (tarea 5.1):** `src/performance/benchmark_5_1.py`, con resultados e informe en `docs/Rendimiento 5.1/` y `data/processed/DATAMARCA_5_1_*.csv`.
 - **Optimizador Catalyst (tarea 5.3):** los análisis y benchmarks (column pruning, funciones nativas contra UDF de Python, joins) están en `src/optimization/` y sus evidencias en `reports/optimizacion/`. La evidencia de pushdown sobre el Parquet particionado (`src/optimization/pushdown_parquet.py`) muestra que filtrar por `fecha` abre 1 de 31 archivos (3,3 % de los bytes) y que el filtro de monto llega al lector de Parquet; con estos datos no descarta lectura, porque cada archivo tiene un solo grupo de filas. Con una UDF de Python el filtro no se empuja.
@@ -308,7 +309,8 @@ Se trabaja en ramas propias y se integra a `main` mediante pull request (plantil
 
 ## Pendientes
 
-- Evidencia de una corrida en Azure (`reports/tiempos/evidencia/azure/`): la infraestructura y el job están definidos, pero aún no hay una ejecución en la nube registrada en el repositorio.
+- Ordenar la evidencia de Azure: hay dos corridas vacías (0,5 s, sin etapas) y solo una usa la persistencia particionada actual; conviene dejar una corrida final de referencia y retirar o anotar las vacías.
+- Eliminar `tmp_tiempos/`, carpeta con restos de la descarga de los logs de Azure que quedó versionada por error.
 - Workflow de GitHub Actions en `.github/workflows/` (tests y despliegue automático).
 - Corregir la codificación de las tildes del CSV de transacciones (`Lácteos` y `Panadería` llegan con doble codificación y la regla `T-D02` las marca como advertencia).
 - Decidir el valor por defecto de `spark.sql.shuffle.partitions` con la evidencia de la tarea 5.1.
