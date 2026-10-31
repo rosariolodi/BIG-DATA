@@ -56,7 +56,8 @@ Las funciones devuelven esos mismos datos (`ResultadoPersistencia`) para las pru
 
 | Variable | Valor por defecto | Uso |
 |---|---|---|
-| `DATAMARCA_STORAGE_ROOT` | `data/processed` (ruta absoluta del proyecto) | Raíz del almacenamiento. En Azure: `abfss://<contenedor>@<cuenta>.dfs.core.windows.net` |
+| `DATAMARCA_STORAGE` | (sin valor) | Nombre de la cuenta ADLS Gen2. **Activa el modo Azure** (`src/config/rutas.py`): lee de `bronze` y escribe `silver` y `gold` en sus propios contenedores. Es la variable que se define en el cluster de Databricks |
+| `DATAMARCA_STORAGE_ROOT` | `data/processed` (ruta absoluta del proyecto) | Raíz de la persistencia **cuando no está definida `DATAMARCA_STORAGE`** (modo local). También permite probar Spark local escribiendo en `abfss://<contenedor>@<cuenta>.dfs.core.windows.net`, caso que no se ha probado |
 | `DATAMARCA_FORMATO` | `auto` | `auto`, `delta` o `parquet` |
 | `AZURE_STORAGE_ACCOUNT` | (sin valor) | Cuenta de ADLS Gen2, solo fuera de Databricks |
 | `AZURE_STORAGE_KEY` | (sin valor) | Clave de la cuenta. **Nunca se versiona**; va en `.env` o en un secreto |
@@ -70,19 +71,21 @@ Instalar dependencias (desde la raíz del repositorio):
 pip install -r src/requitements.txt
 ```
 
-**Local, Parquet particionado (por defecto):**
+**Local, Parquet particionado (por defecto)**, desde la raíz del repositorio:
 
 ```bash
-cd src && python main.py
+python src/main.py
 ```
 
 **Local, Delta Lake** (la primera vez descarga los jars de Delta desde Maven; requiere Java y no funciona en Windows sin `hadoop.dll`):
 
 ```bash
-cd src && DATAMARCA_FORMATO=delta python main.py
+DATAMARCA_FORMATO=delta python src/main.py
 ```
 
-**Azure Databricks:** importar el repositorio (Repos) y ejecutar `src/main.py` como job con `DATAMARCA_STORAGE_ROOT=abfss://<contenedor>@<cuenta>.dfs.core.windows.net`. Delta y el acceso a ADLS ya vienen en el runtime; el acceso se configura en el clúster (Unity Catalog o *service principal*), no con la clave de cuenta.
+En PowerShell: `$env:DATAMARCA_FORMATO="delta"; python src/main.py`. Los requisitos del entorno (Python 3.12, Java, variables de Spark en Windows) están en el `README.md`.
+
+**Azure Databricks:** importar el repositorio y ejecutar `src/main.py` como job con `DATAMARCA_STORAGE=<cuenta>` definida en el cluster. El paso a paso (Terraform, datos crudos, acceso al storage, job) está en la sección «Despliegue en Azure» del `README.md`. Delta ya viene en el runtime. El `README.md` configura el acceso con la clave de la cuenta guardada en un *secret scope*, que sirve para desarrollo; para producción es preferible Unity Catalog o un *service principal*.
 
 **Spark local escribiendo en ADLS Gen2:** definir `DATAMARCA_STORAGE_ROOT`, `AZURE_STORAGE_ACCOUNT` y `AZURE_STORAGE_KEY`; el conector `hadoop-azure` se descarga al crear la sesión.
 
@@ -95,7 +98,7 @@ spark.read.parquet("data/processed/silver/transacciones").where("fecha = '2026-0
 
 ## 5. Supuestos y pendientes
 
-- **No se ha probado contra Azure.** La infraestructura de `azure/infrastructure/` aún está vacía; la escritura en `abfss://` queda lista por configuración, pero falta crear la cuenta ADLS Gen2 y ejecutarla.
+- **Evidencia en Azure.** `reports/tiempos/evidencia/azure/` contiene 7 corridas en Azure Databricks (Spark 4.1.0 por Spark Connect). Solo la última (`tiempos_20261031_034517`) ejecutó esta persistencia particionada, con las subetapas `silver` (10.000 filas) y `gold` (71 filas); las anteriores son de versiones previas del pipeline, y dos duran 0,5 s sin etapas. De esa corrida solo se conserva el log de tiempos: no hay en el repositorio el contenido de las tablas Delta ni su estructura de carpetas en ADLS Gen2. Local: Parquet particionado en Windows (con el respaldo de `pyarrow`) y una corrida en Linux con Spark 3.5.3.
 - **Bronze no se persiste** en esta tarea: la 4.3 pide los resultados finales. Los datos crudos siguen en `data/raw/`.
 - **Archivo anterior:** `data/processed/kpis_negocio_categoria/resultado.parquet` era la salida con pandas sin particionar. `src/main.py` ya no lo genera; se conserva como referencia hasta que el equipo decida retirarlo.
 - **`guardar_resultados` en `transformations/agregaciones.py`** (tarea 4.2) ya no se llama desde `main.py`; la persistencia de esas tablas la hace este módulo.
