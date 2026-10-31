@@ -1,2 +1,4 @@
 pyspark>=3.3.0
 delta-spark>=2.3.0
+pandas>=1.5
+pyarrow>=8.0.0

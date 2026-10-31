@@ -5,8 +5,23 @@ DATAMARCA S.A.
 
 import os
 import time
+import sys
+import subprocess
 import urllib.request
 from pathlib import Path
+
+# Benchmark 5.1: ejecucion independiente y sin alterar el pipeline normal.
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--benchmark":
+    raiz_proyecto = Path(__file__).resolve().parent.parent
+    benchmark = raiz_proyecto / "src" / "performance" / "benchmark_5_1.py"
+    if not benchmark.is_file():
+        raise SystemExit(f"No se encontro el benchmark: {benchmark}")
+    resultado = subprocess.run(
+        [sys.executable, str(benchmark), *sys.argv[2:]],
+        cwd=raiz_proyecto,
+        check=False,
+    )
+    raise SystemExit(resultado.returncode)
 
 # --- AUTOCORRECCIÓN DE WINUTILS PARA WINDOWS ---
 hadoop_dir = Path(os.path.expanduser("~")) / ".hadoop"
@@ -32,6 +47,13 @@ from transformations.joins import realizar_join_transacciones_logs, generar_agre
 from transformations.agregaciones import ejecutar_agregaciones, guardar_resultados
 from utils.tiempos import RegistroTiempos, materializar
 from config.rutas import DIR_KPIS, DIR_TIEMPOS, DIR_TIEMPOS_NUBE, EN_NUBE, escribir_delta
+from persistence.writer import configurar_builder, preparar_persistencia, persistir_silver, persistir_gold
+
+# Sin variable adicional se mantiene la persistencia actual de main.
+# DATAMARCA_PERSISTENCE=writer habilita la persistencia 4.3 de joel.
+MODO_PERSISTENCIA = os.environ.get("DATAMARCA_PERSISTENCE", "main").lower()
+if MODO_PERSISTENCIA not in ("main", "writer"):
+    raise ValueError("DATAMARCA_PERSISTENCE debe ser 'main' o 'writer'")
 
 # Los logs de tiempos (Inciso 5.2) se guardan en DIR_TIEMPOS (ver config/rutas.py)
 
@@ -48,9 +70,14 @@ def ejecutar_pipeline():
     # Spark usa su valor por defecto (200 particiones de shuffle).
     if os.environ.get("SHUFFLE_PARTITIONS"):
         constructor = constructor.config("spark.sql.shuffle.partitions", os.environ["SHUFFLE_PARTITIONS"])
+    if MODO_PERSISTENCIA == "writer":
+        constructor = configurar_builder(constructor)
     spark = constructor.getOrCreate()
+    formato = raiz = None
 
     try:
+        if MODO_PERSISTENCIA == "writer":
+            formato, raiz = preparar_persistencia(spark)
         print("--- INICIO DE LIMPIEZA Y JOINS DISTRIBUIDOS ---")
 
         # 2. Ingestión: lectura con esquema estricto y validación de calidad (Incisos 2.1 y 2.2)
@@ -72,6 +99,11 @@ def ejecutar_pipeline():
             df_clean_logs = ejecutar_limpieza_logs(spark, ingesta_logs.validos)
             m.filas = materializar(df_clean_logs)
 
+        # Persistencia Silver 4.3, conservada como opcion de la rama joel.
+        if MODO_PERSISTENCIA == "writer":
+            with registro.medir("persistencia", "silver"):
+                persistir_silver(df_clean_tx, df_clean_logs, formato, raiz)
+
         # Desarrollo de Joins Distribuidos (Inciso 4.1)
         with registro.medir("transformacion", "join") as m:
             df_joined = realizar_join_transacciones_logs(df_clean_tx, df_clean_logs)
@@ -87,23 +119,30 @@ def ejecutar_pipeline():
         print("--- RESULTADOS DE LAS AGREGACIONES POR CATEGORÍA ---")
         df_resultado_negocio.show(10, truncate=False)
 
-        # 4. Persistencia de resultados procesados a Parquet usando Pandas en Windows
-        print("--- GUARDANDO RESULTADOS EN PARQUET ---")
-
-        with registro.medir("persistencia", "kpis_negocio_categoria") as m:
-            if EN_NUBE:
-                # Azure: Delta Lake en la capa gold de ADLS Gen2
-                m.filas = escribir_delta(df_resultado_negocio, DIR_KPIS)
-            else:
-                # Local (Windows): Pandas + Parquet (evita el error de winutils/hadoop.dll)
-                Path("data/processed/kpis_negocio_categoria").mkdir(parents=True, exist_ok=True)
-                df_pandas = df_resultado_negocio.toPandas()
-                df_pandas.to_parquet("data/processed/kpis_negocio_categoria/resultado.parquet", index=False)
-                m.filas = len(df_pandas)
-
-        # Agregaciones de negocio adicionales con SparkSQL y DataFrames (Inciso 4.2)
-        with registro.medir("persistencia", "agregaciones_adicionales"):
-            guardar_resultados(resultados_agregaciones, "data/processed")
+        # Persistencia: predeterminado main; opcionalmente Silver/Gold de 4.3.
+        if MODO_PERSISTENCIA == "writer":
+            print("--- PERSISTENCIA GOLD (4.3) ---")
+            with registro.medir("persistencia", "gold"):
+                persistir_gold(
+                    {"kpis_negocio_categoria": df_resultado_negocio, **resultados_agregaciones},
+                    formato,
+                    raiz,
+                )
+        else:
+            # Conservar la ruta original de main (local Parquet / Azure Delta).
+            print("--- GUARDANDO RESULTADOS EN PARQUET ---")
+            with registro.medir("persistencia", "kpis_negocio_categoria") as m:
+                if EN_NUBE:
+                    m.filas = escribir_delta(df_resultado_negocio, DIR_KPIS)
+                else:
+                    Path("data/processed/kpis_negocio_categoria").mkdir(parents=True, exist_ok=True)
+                    df_pandas = df_resultado_negocio.toPandas()
+                    df_pandas.to_parquet(
+                        "data/processed/kpis_negocio_categoria/resultado.parquet", index=False
+                    )
+                    m.filas = len(df_pandas)
+            with registro.medir("persistencia", "agregaciones_adicionales"):
+                guardar_resultados(resultados_agregaciones, "data/processed")
 
         print(f"--- PIPELINE COMPLETADO EXITOSAMENTE (Tiempo total: {registro.total_s:.2f} s) ---")
     finally:

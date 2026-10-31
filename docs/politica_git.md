@@ -68,6 +68,7 @@ Reglas:
 El archivo `.gitignore` excluye:
 - `__pycache__/` y `*.pyc` (se regeneran solos).
 - Salidas que cambian en cada ejecución: `data/quarantine/` y `src/data/` (esta última aparece al ejecutar `main.py` desde `src/`; la salida oficial es `data/processed/`).
+- Archivos auxiliares que Spark escribe junto a los Parquet: `*.crc`, `_SUCCESS` y `_temporary/` (tarea 4.3).
 - Credenciales y configuración local: `.env`, claves y certificados. **Nunca se suben secretos al repositorio.**
 - Estado de Terraform (`*.tfstate`, `.terraform/`).
 - Archivos de editor y del sistema operativo.
