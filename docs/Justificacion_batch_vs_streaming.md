@@ -89,7 +89,7 @@ Streaming sería la opción adecuada si el negocio exigiera alertas inmediatas, 
 
 ## 5. Referente conceptual: Apache Beam
 
-Apache Beam propone un **modelo unificado** para batch y streaming: la misma lógica de procesamiento se describe una sola vez y puede ejecutarse sobre datos acotados (un archivo) o no acotados (un flujo). Su modelo responde cuatro preguntas sobre el procesamiento:
+Apache Beam propone un **modelo unificado** para batch y streaming: sus SDK usan las mismas clases y las mismas transformaciones para datos acotados (por ejemplo, un archivo) y no acotados (por ejemplo, un flujo de eventos). Si la fuente es acotada, el pipeline puede ejecutarse en batch; si es no acotada, debe ejecutarse en modo streaming. Beam hereda del modelo Dataflow una forma de describir el procesamiento mediante cuatro preguntas:
 
 | Pregunta | Concepto en Beam | Equivalente en este proyecto |
 |---|---|---|
@@ -98,8 +98,18 @@ Apache Beam propone un **modelo unificado** para batch y streaming: la misma ló
 | ¿Cuándo se emite el resultado? | *Triggers* y *watermarks* | En batch, al terminar cada ejecución |
 | ¿Cómo se refinan los resultados? | Modo de acumulación | En batch, cada corrida sobrescribe el resultado anterior |
 
-La consecuencia práctica para DATAMARCA es que las transformaciones no dependen de la modalidad: pasar de batch a streaming cambiaría la fuente de datos y el modo de ejecución, no la lógica de negocio. En el ecosistema Spark, el equivalente es Structured Streaming, que permite ventanas por tiempo del evento y *watermarks* para manejar datos tardíos con la misma API de DataFrames. Por eso elegir batch ahora no cierra el camino hacia streaming.
+La columna "Equivalente en este proyecto" es una analogía con nuestro pipeline batch, no una descripción de cómo funciona Beam.
+
+La consecuencia práctica para DATAMARCA es que la lógica de negocio (limpieza, cruce y agregaciones) se conserva en gran parte al pasar a streaming, pero **no basta con cambiar la fuente de datos**: sobre datos no acotados hay que definir explícitamente ventanas por tiempo del evento y una política para los datos tardíos. En Beam, agrupar una colección no acotada exige una ventana distinta de la global o un *trigger* no predeterminado; en Spark Structured Streaming, el equivalente es definir ventanas por tiempo del evento y una marca de agua (`withWatermark`), que además no tiene efecto en una consulta batch. Elegir batch ahora no cierra el camino hacia streaming, pero esa migración requiere ese rediseño.
 
 ## 6. Conclusión
 
 Con base en la forma de entrega de los datos, el tipo de consultas, la validación de calidad sobre lotes completos y el menor costo operativo, se adopta el procesamiento **batch** y se descarta, por ahora, streaming. La decisión es coherente con la arquitectura híbrida de la Unidad 2 y puede revisarse si el negocio incorpora un requisito de latencia por evento.
+
+## Referencias
+
+- Apache Beam, [Beam Overview](https://beam.apache.org/get-started/beam-overview/): modelo unificado para batch y streaming.
+- Apache Beam, [Basics of the Beam model](https://beam.apache.org/documentation/basics/): colecciones acotadas y no acotadas.
+- Apache Beam, [Programming Guide](https://beam.apache.org/documentation/programming-guide/): ventanas, *watermarks*, *triggers* y datos tardíos.
+- Apache Spark, [Structured Streaming Programming Guide](https://spark.apache.org/docs/latest/streaming/apis-on-dataframes-and-datasets.html): ventanas por tiempo del evento y marcas de agua (*watermarking*).
+- Las cuatro preguntas (qué, dónde, cuándo, cómo) provienen del modelo Dataflow, origen de Beam, y se describen en el artículo "Streaming 102" de Tyler Akidau. En esta revisión se consultaron fuentes secundarias que lo resumen, no el artículo original.
