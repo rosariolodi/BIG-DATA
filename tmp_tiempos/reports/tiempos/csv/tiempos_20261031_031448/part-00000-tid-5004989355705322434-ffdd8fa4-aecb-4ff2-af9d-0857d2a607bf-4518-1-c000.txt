@@ -1,0 +1,10 @@
+corrida_id,inicio,etapa,subetapa,duracion_s,filas,estado,transacciones_leidas,logs_leidos,shuffle_partitions
+20261031_031448,2026-10-31T03:14:48,ingestion,transacciones_csv,36.163,5000,ok,5000,5000,200
+20261031_031448,2026-10-31T03:15:24,ingestion,logs_json,18.168,5000,ok,5000,5000,200
+20261031_031448,2026-10-31T03:15:42,transformacion,limpieza_transacciones,7.77,5000,ok,5000,5000,200
+20261031_031448,2026-10-31T03:15:50,transformacion,limpieza_logs,8.668,5000,ok,5000,5000,200
+20261031_031448,2026-10-31T03:15:58,transformacion,join,13.959,5000,ok,5000,5000,200
+20261031_031448,2026-10-31T03:16:12,transformacion,agregaciones,32.928,71,ok,5000,5000,200
+20261031_031448,2026-10-31T03:16:46,persistencia,kpis_negocio_categoria,5.817,10,ok,5000,5000,200
+20261031_031448,2026-10-31T03:16:52,persistencia,agregaciones_adicionales,9.819,,ok,5000,5000,200
+

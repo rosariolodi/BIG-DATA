@@ -1,0 +1,91 @@
+{
+  "corrida_id": "20261031_000244",
+  "inicio": "2026-10-31T00:02:44",
+  "total_s": 165.142,
+  "estado": "ok",
+  "etapas_s": {
+    "ingestion": 70.446,
+    "transformacion": 72.029,
+    "persistencia": 21.534
+  },
+  "sin_etapa_s": 1.133,
+  "subetapas": [
+    {
+      "etapa": "ingestion",
+      "subetapa": "transacciones_csv",
+      "inicio": "2026-10-31T00:02:44",
+      "duracion_s": 48.312,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "ingestion",
+      "subetapa": "logs_json",
+      "inicio": "2026-10-31T00:03:32",
+      "duracion_s": 22.134,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "limpieza_transacciones",
+      "inicio": "2026-10-31T00:03:54",
+      "duracion_s": 9.092,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "limpieza_logs",
+      "inicio": "2026-10-31T00:04:03",
+      "duracion_s": 9.41,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "join",
+      "inicio": "2026-10-31T00:04:12",
+      "duracion_s": 16.233,
+      "filas": 5000,
+      "estado": "ok"
+    },
+    {
+      "etapa": "transformacion",
+      "subetapa": "agregaciones",
+      "inicio": "2026-10-31T00:04:29",
+      "duracion_s": 37.294,
+      "filas": 71,
+      "estado": "ok"
+    },
+    {
+      "etapa": "persistencia",
+      "subetapa": "kpis_negocio_categoria",
+      "inicio": "2026-10-31T00:05:07",
+      "duracion_s": 8.227,
+      "filas": 10,
+      "estado": "ok"
+    },
+    {
+      "etapa": "persistencia",
+      "subetapa": "agregaciones_adicionales",
+      "inicio": "2026-10-31T00:05:15",
+      "duracion_s": 13.307,
+      "filas": null,
+      "estado": "ok"
+    }
+  ],
+  "datos": {
+    "transacciones_leidas": 5000,
+    "logs_leidos": 5000
+  },
+  "entorno": {
+    "python": "3.12.3",
+    "sistema": "Linux-6.8.0-1064-azure-x86_64-with-glibc2.39",
+    "spark": "4.1.0",
+    "shuffle_partitions": "200",
+    "zona_horaria": "Etc/UTC",
+    "master": "spark-connect",
+    "paralelismo": null
+  }
+}
