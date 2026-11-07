@@ -27,6 +27,10 @@ _temporary/
 reports/tiempos/*
 !reports/tiempos/evidencia/
 !reports/tiempos/README.md
+# Zona de trabajo y resúmenes de cada corrida del DAG (Unidad 4). Solo se versionan las corridas
+# elegidas como evidencia, copiadas a reports/orquestacion/evidencia/.
+data/_staging/
+reports/orquestacion/resumen_*
 
 # --- Credenciales y configuración local (nunca se versionan) ---
 .env
