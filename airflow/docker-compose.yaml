@@ -17,6 +17,9 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DEFAULT_TIMEZONE: America/Bogota
     AIRFLOW__API_AUTH__JWT_SECRET: datamarca-local-no-usar-en-produccion
     AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "airflow:admin"
+    # Las tareas corren dentro del contenedor del scheduler y llaman a la API de ejecucion del
+    # contenedor api-server. Sin esto buscan localhost:8080 y fallan con "Connection refused".
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-apiserver:8080/execution/"
     DATAMARCA_HOME: /opt/datamarca
     DATAMARCA_PYTHON: python
   volumes:
