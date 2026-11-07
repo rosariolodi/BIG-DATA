@@ -114,23 +114,36 @@ Los parámetros de reintento y de tiempo máximo son parte del paso 3.
 
 Cuando falla T10 o T11, la otra capa puede quedar escrita y esta sin escribir. La notificación debe decirlo con claridad. Al reintentar solo la tarea fallida se completa la corrida, sin rehacer la otra, porque no hay dependencia entre ellas.
 
+**Verificado en ejecución (fila T6 o T7).** Con el DAG en Docker se forzó el fallo de `limpiar_logs` (T7), una tarea intermedia. Resultado, igual a lo previsto en la tabla:
+
+| Tareas | Estado en Airflow |
+|---|---|
+| T1 a T5 y `limpiar_transacciones` (T6) | success |
+| `limpiar_logs` (T7) | failed, tras agotar los reintentos |
+| `unir`, `agregar`, `persistir_silver`, `persistir_gold` (T8 a T11) y `corrida_completa` | upstream_failed |
+| `notificar` (T12) | success; el resumen lo declara "CON FALLO" y nombra las tareas que no se ejecutaron |
+
+La evidencia está en `reports/orquestacion/evidencia/`. Las demás filas de la tabla no se han probado en ejecución.
+
 ## 6. Qué debe guardarse entre tareas
 
 En la Unidad 3 los DataFrames pasan en memoria dentro de una sola sesión de Spark. Con tareas separadas, cada dependencia de **datos** necesita que la tarea anterior deje su resultado en almacenamiento.
 
 | Dependencia | Qué se guarda | Estado |
 |---|---|---|
-| T1 → T3 | Nada nuevo: los archivos crudos ya están en el origen (`bronze` en Azure, `data/raw/` en local) | Ver decisión 1 |
-| T3 → T6, T4 → T7 | Registros válidos de cada fuente | **Nuevo**: no se guarda hoy |
-| T3, T4 → T5 | Métricas de calidad | Ya existe (`metricas_<fuente>.json`) |
-| T6, T7 → T8 y T10 | Registros limpios de cada fuente | **Nuevo** (silver se escribe, pero después de agregar `fecha`) |
-| T8 → T9 | Tabla unida | **Nuevo** |
-| T9 → T11 | Agregaciones | **Nuevo** |
-| T1 a T11 → T12 | Estado de cada tarea y log de tiempos | El log ya existe; el estado lo da la herramienta |
+| T1 → T3 | Nada nuevo: los archivos crudos ya están en el origen (`bronze` en Azure, `data/raw/` en local) | Decidido: T1 solo verifica el origen (sección 9) |
+| T3 → T6, T4 → T7 | Registros válidos de cada fuente | Implementado: `validos_<fuente>` en la zona de trabajo |
+| T3, T4 → T5 | Métricas de calidad | Implementado: `metricas/<fuente>.json` en la zona de trabajo |
+| T6, T7 → T8 y T10 | Registros limpios de cada fuente | Implementado: `limpio_<fuente>` (silver agrega `fecha` al escribir) |
+| T8 → T9 | Tabla unida | Implementado: `unida` |
+| T9 → T11 | Agregaciones | Implementado: `gold_<tabla>` |
+| T1 a T11 → T12 | Estado de cada tarea | Implementado: `estado/<tarea>.json` en la zona de trabajo |
 
-Se propone una zona de trabajo (por ejemplo `_staging/<id_corrida>/`) en el mismo almacenamiento para los resultados nuevos. Tiene dos consecuencias: se necesita un identificador de corrida común a todas las tareas y debe definirse cuándo se borran esos archivos.
+La zona de trabajo es `data/_staging/<id_corrida>/` (variable `DATAMARCA_STAGING_ROOT`), con el identificador de corrida de Airflow como carpeta. Su limpieza es opcional (sección 9).
 
-## 7. Ruta crítica estimada
+## 7. Ruta crítica: estimada y medida
+
+### 7.1 Estimación, antes de implementar el DAG
 
 Con las duraciones de la corrida de Azure del 31/10/2026 03:45 (`reports/tiempos/evidencia/azure/tiempos_20261031_034517.csv`):
 
@@ -160,7 +173,41 @@ La ruta crítica pasa por logs → limpieza de logs → unión → agregaciones 
 - T5 y T12 no tienen medida; se espera que sean muy cortas frente a las demás.
 - Es una sola corrida de 5.000 filas por fuente. No se debe extrapolar al volumen de producción.
 
-Los tiempos reales se medirán cuando exista el DAG.
+### 7.2 Medición con el DAG en Docker
+
+Corrida exitosa del 6 de noviembre de 2026 (21:49 hora de Bogotá), con el DAG de `airflow/` en Docker, en un equipo local. Duraciones por tarea tomadas de su resumen (`reports/orquestacion/evidencia/corrida_exitosa.md`):
+
+| Tarea | Duración (s) |
+|---|---|
+| ingestar_transacciones (T1) | 1,00 |
+| ingestar_logs (T2) | 0,14 |
+| validar_transacciones (T3) | 22,30 |
+| validar_logs (T4) | 22,47 |
+| compuerta_calidad (T5) | 0,08 |
+| limpiar_transacciones (T6) | 14,88 |
+| limpiar_logs (T7) | 14,96 |
+| unir (T8) | 18,23 |
+| agregar (T9) | 27,13 |
+| persistir_silver (T10) | 45,79 |
+| persistir_gold (T11) | 19,98 |
+
+| Cálculo | Segundos |
+|---|---|
+| Suma de las tareas (si corrieran una tras otra) | 187,0 |
+| Hasta tener las dos limpiezas: máx(1,00 + 22,30; 0,14 + 22,47) + 0,08 + máx(14,88; 14,96) | 38,3 |
+| Rama gold: 38,3 + 18,23 + 27,13 + 19,98 | 103,7 |
+| Rama silver: 38,3 + 45,79 | 84,1 |
+| **Ruta crítica calculada** (la mayor de las dos ramas) | **103,7** |
+| **Duración real de la corrida** (de 02:49:20 a 02:51:16 UTC) | **116,2** |
+
+Lectura de los datos:
+
+- La ruta crítica pasa por validación de transacciones → limpieza de logs → unión → agregaciones → gold, no por la rama de logs como en la estimación.
+- El paralelismo ahorró unos 71 s frente a ejecutar las tareas en secuencia (187,0 contra 116,2).
+- Quedan unos 12 s entre la ruta crítica calculada y la duración real. Se atribuyen al arranque y la planificación de cada tarea, pero no se midieron por separado.
+- Las cuatro corridas exitosas de esa noche duraron entre 116 y 157 s (116, 124, 153 y 157 s), así que hay variación entre corridas sin causa investigada.
+- Frente a la estimación de 87,84 s, la ruta crítica medida es mayor (103,7 s). La comparación no es exacta: la estimación usó tiempos de Azure Databricks y la medición se hizo en Docker local, con cada tarea arrancando su propia sesión de Spark.
+- Son corridas de 5.000 filas por fuente en un equipo local. No sirven para extrapolar al volumen de producción.
 
 ## 8. Riesgos de dividir en tareas
 
@@ -170,11 +217,12 @@ Los tiempos reales se medirán cuando exista el DAG.
 | `RegistroTiempos` es por proceso y genera su propio `corrida_id` | El log quedaría partido en varios archivos | Pasar un `corrida_id` común y consolidar los tiempos al final |
 | Se pierde el `cache` entre tareas | Releer y recalcular en cada tarea | Medirlo; los resultados intermedios en la zona de trabajo lo compensan |
 | `main.py` hoy es un solo punto de entrada | El flujo completo debe seguir existiendo para pruebas locales | Mantenerlo y agregar puntos de entrada por tarea |
-| Entorno local en Windows | Sin `hadoop.dll` la escritura usa el respaldo de pyarrow | Las pruebas del DAG en Azure; en local, solo con Parquet |
+| Entorno local en Windows | Sin `hadoop.dll`, Spark no puede escribir en disco. `main.py` usa un respaldo de pyarrow, pero las tareas de `src/orquestacion/tareas.py` no (verificado: fallan en Windows sin Docker) | Ejecutar el DAG en Docker (Linux), como en `airflow/README.md` |
 
-## 9. Decisiones que quedan para el paso 2
+## 9. Decisiones tomadas en la implementación
 
-Ya decidido: T5 detiene la corrida al superar el 0,1 % de rechazo en una fuente (sección 4).
+1. **Compuerta de calidad (T5).** Detiene la corrida cuando el rechazo de una fuente supera el 0,1 % (sección 4). Implementado en `compuerta_calidad`, con el umbral en `UMBRAL_RECHAZO_PCT`.
+2. **Qué hace T1.** Los archivos crudos ya están en el origen, así que T1 no produce un resultado nuevo. Se eligió la opción (a): solo verifica que el origen existe, no está vacío y tiene la estructura esperada, para fallar rápido y antes de abrir una sesión de Spark. Las otras opciones eran guardar una copia en bronze, con costo de almacenamiento, o unir T1 con T3.
+3. **Zona de trabajo.** `data/_staging/<id_corrida>/` (sección 6). La limpieza de los resultados intermedios de una corrida exitosa es opcional y viene desactivada (`DATAMARCA_LIMPIAR_STAGING`). Los resultados de las corridas fallidas se conservan para investigarlas.
 
-1. **Qué hace T1.** Los archivos crudos ya están en el origen, así que T1 no produce un resultado nuevo. Opciones: (a) que solo verifique que el origen existe y se lee con el esquema (falla rápido); (b) que guarde una copia en bronze, con costo de almacenamiento; (c) unirla con T3 y dejar una sola tarea de lectura y validación por fuente. Se recomienda (a).
-2. **Dónde queda la zona de trabajo** y cuándo se limpia.
+**Sigue abierto:** la política de retención de la zona de trabajo en producción. Con la limpieza desactivada, la carpeta crece con cada corrida y hay que decidir cuándo se borra.
