@@ -22,9 +22,13 @@ Variables de entorno (detalle en airflow/README.md):
   DATAMARCA_SPARK_MASTER     master de Spark; por defecto local[2]
   SHUFFLE_PARTITIONS         particiones de shuffle; por defecto 8 (los datos son pequeños)
   DATAMARCA_LIMPIAR_STAGING  true = borra los resultados intermedios de una corrida exitosa
+  DATAMARCA_RETENCION_DIAS   días que se conserva la carpeta de cualquier corrida; 0 o vacío = no se purga
   DATAMARCA_WEBHOOK_URL      opcional: URL (Slack/Teams/genérico) a la que notificar
   DATAMARCA_FALLAR_EN        nombre de una tarea a la que se le fuerza un fallo (demostración, T1.3)
   DATAMARCA_FALLAR_INTENTOS  cuántos intentos fallan antes de dejar pasar la tarea (defecto: todos)
+  DATAMARCA_DEMORAR_EN       <tarea>:<segundos>: demora una tarea para probar los timeouts (T1.3)
+
+La retención de la zona de trabajo y el manejo de errores están en docs/orquestacion/manejo_errores_logging.md.
 """
 import argparse
 import csv
@@ -319,6 +323,43 @@ def clasificar(estados: dict) -> dict:
     return clasificacion
 
 
+def _ultima_actividad(carpeta: Path) -> float:
+    """Momento de la última escritura de estado de una corrida (o de la carpeta, si no tiene)."""
+    return max((p.stat().st_mtime for p in (carpeta / "estado").glob("*.json")),
+               default=carpeta.stat().st_mtime)
+
+
+def aplicar_retencion(run_id: str, exito: bool) -> dict:
+    """Retención de la zona de trabajo (docs/orquestacion/manejo_errores_logging.md, sección 5).
+
+    1. Corrida exitosa con DATAMARCA_LIMPIAR_STAGING=true: se borran sus intermedios y se conservan
+       estado/ y metricas/. Las corridas fallidas se conservan para investigarlas o reanudarlas.
+    2. DATAMARCA_RETENCION_DIAS=N (N > 0): se borran las carpetas de otras corridas cuya última
+       actividad tenga más de N días. Solo se tocan carpetas con estado/ (las crea este script),
+       para no borrar nada ajeno si DATAMARCA_STAGING_ROOT apunta a otro lugar.
+    """
+    actual = dir_corrida(run_id)
+    limpiados, purgadas = [], []
+    if exito and os.getenv("DATAMARCA_LIMPIAR_STAGING", "false").lower() == "true" and actual.is_dir():
+        for sub in actual.iterdir():
+            if sub.is_dir() and sub.name not in ("estado", "metricas"):
+                shutil.rmtree(sub, ignore_errors=True)
+                limpiados.append(sub.name)
+    dias = float(os.getenv("DATAMARCA_RETENCION_DIAS") or 0)
+    if dias > 0 and STAGING_ROOT.is_dir():
+        limite = time.time() - dias * 86400
+        for carpeta in STAGING_ROOT.iterdir():
+            if (carpeta.is_dir() and carpeta.name != actual.name and (carpeta / "estado").is_dir()
+                    and _ultima_actividad(carpeta) < limite):
+                shutil.rmtree(carpeta, ignore_errors=True)
+                purgadas.append(carpeta.name)
+    if limpiados:
+        log.info("Retención: intermedios borrados de la corrida %s: %s", actual.name, ", ".join(sorted(limpiados)))
+    if purgadas:
+        log.info("Retención: corridas con más de %s días borradas: %s", dias, ", ".join(sorted(purgadas)))
+    return {"limpiados": sorted(limpiados), "purgadas": sorted(purgadas)}
+
+
 def notificar(run_id: str) -> dict:
     estados = leer_estados(run_id)
     clasif = clasificar(estados)
@@ -328,6 +369,9 @@ def notificar(run_id: str) -> dict:
     rid = limpiar_run_id(run_id)
 
     lineas = [f"# Corrida {rid}: {'EXITOSA' if exito else 'CON FALLO'}", ""]
+    demo = {v: os.getenv(v) for v in ("DATAMARCA_FALLAR_EN", "DATAMARCA_DEMORAR_EN") if os.getenv(v)}
+    if demo:
+        lineas.append("- Modo demostración: " + ", ".join(f"{k}={v}" for k, v in demo.items()))
     if exito:
         m = {f: json.loads((dir_corrida(run_id) / "metricas" / f"{f}.json").read_text(encoding="utf-8"))
              for f in FUENTES if (dir_corrida(run_id) / "metricas" / f"{f}.json").is_file()}
@@ -336,7 +380,8 @@ def notificar(run_id: str) -> dict:
         lineas.append(f"- Tiempo acumulado de tareas: {sum(e.get('segundos', 0) for e in estados.values()):.1f} s")
     else:
         for t in fallidas:
-            lineas.append(f"- FALLÓ `{t}` (intento {estados[t].get('intento')}): {estados[t].get('error', 'sin cierre')}")
+            lineas.append(f"- FALLÓ `{t}` (intento {estados[t].get('intento')}): "
+                          f"{estados[t].get('error', 'sin cierre (timeout o proceso terminado)')}")
         if canceladas:
             lineas.append(f"- No se ejecutaron por la falla: {', '.join(canceladas)}")
         hechas = [t for t, c in clasif.items() if c == "exitosa"]
@@ -350,24 +395,29 @@ def notificar(run_id: str) -> dict:
         e = estados.get(t, {})
         lineas.append(f"| {t} | {clasif[t]} | {e.get('segundos', '-')} | {e.get('intento', '-')} |")
     texto = "\n".join(lineas)
+    (log.info if exito else log.error)("NOTIFICACIÓN\n%s", texto)
 
+    # Cada paso en su propio try: un fallo al notificar no cambia el estado del procesamiento,
+    # y un fallo de uno de los pasos no impide los demás (B4 de manejo_errores_logging.md).
     try:
         REPORTES_DIR.mkdir(parents=True, exist_ok=True)
         (REPORTES_DIR / f"resumen_{rid}.md").write_text(texto, encoding="utf-8")
         (REPORTES_DIR / f"resumen_{rid}.json").write_text(
             json.dumps({"run_id": rid, "exito": exito, "tareas": clasif}, ensure_ascii=False, indent=2), encoding="utf-8")
-        (log.info if exito else log.error)("NOTIFICACIÓN\n%s", texto)
+    except Exception as e:
+        log.error("No se pudo guardar el resumen de la corrida: %s", e)
+    try:
         url = os.getenv("DATAMARCA_WEBHOOK_URL")
         if url:
             req = urllib.request.Request(url, data=json.dumps({"text": texto}).encode(),
                                          headers={"Content-Type": "application/json"})
             urllib.request.urlopen(req, timeout=10)
-        if exito and os.getenv("DATAMARCA_LIMPIAR_STAGING", "false").lower() == "true":
-            for sub in dir_corrida(run_id).iterdir():
-                if sub.is_dir() and sub.name not in ("estado", "metricas"):
-                    shutil.rmtree(sub, ignore_errors=True)
-    except Exception as e:  # un fallo al notificar no cambia el estado del procesamiento
+    except Exception as e:
         log.error("No se pudo completar la notificación: %s", e)
+    try:
+        aplicar_retencion(run_id, exito)
+    except Exception as e:
+        log.error("No se pudo aplicar la retención de la zona de trabajo: %s", e)
     return {"exito": exito}
 
 
@@ -391,14 +441,28 @@ def _fallo_forzado(tarea: str, intento: int) -> None:
         raise RuntimeError(f"FALLO FORZADO en '{tarea}' (intento {intento}) por DATAMARCA_FALLAR_EN")
 
 
+def _demora_forzada(tarea: str) -> None:
+    """Gancho para probar los timeouts (T1.3): DATAMARCA_DEMORAR_EN=<tarea>:<segundos>.
+    Si la demora supera el execution_timeout de la tarea, Airflow la detiene (SIGTERM) y el
+    estado queda 'en_ejecucion', que la notificación reporta como 'interrumpida'."""
+    nombre, _, segundos = os.getenv("DATAMARCA_DEMORAR_EN", "").partition(":")
+    if nombre == tarea and segundos:
+        log.warning("DEMORA FORZADA en '%s': %s s por DATAMARCA_DEMORAR_EN", tarea, segundos)
+        time.sleep(float(segundos))
+
+
 def ejecutar(tarea: str, run_id: str, intento: int) -> int:
     inicio = time.time()
     base = {"tarea": tarea, "run_id": limpiar_run_id(run_id), "intento": intento,
             "inicio": datetime.now().isoformat(timespec="seconds")}
     log.info("INICIO %s (corrida=%s, intento=%s)", tarea, base["run_id"], intento)
+    demo = {v: os.getenv(v) for v in ("DATAMARCA_FALLAR_EN", "DATAMARCA_DEMORAR_EN") if os.getenv(v)}
+    if demo:  # que una variable de demostración olvidada no pase por un fallo real (B9)
+        log.warning("Modo demostración activo: %s", ", ".join(f"{k}={v}" for k, v in demo.items()))
     if tarea != "notificar":
         escribir_estado(run_id, tarea, {**base, "estado": "en_ejecucion"})
     try:
+        _demora_forzada(tarea)
         _fallo_forzado(tarea, intento)
         detalle = TAREAS[tarea](run_id) or {}
     except Exception as e:

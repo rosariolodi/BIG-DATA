@@ -8,6 +8,7 @@ Pruebas con `pytest` sobre Spark local. No leen los archivos de `data/raw/`: gen
 | `test_idempotencia.py` | Reprocesar el mismo lote dos veces da el mismo resultado: agregaciones idénticas, totales sin duplicar, archivos de salida y cuarentena reemplazados y no acumulados (prueba P4 del informe de la Unidad 2) |
 | `test_tiempos.py` | Registro de tiempos por etapa (tarea 5.2): duración, filas, estados de error, suma por etapa, JSON e historial CSV |
 | `test_agregaciones.py` | Agregaciones de la tarea 4.2 con un conjunto calculado a mano: por tienda, método de pago, día (en hora de Bogotá), top de clientes, y que SparkSQL coincida con la API de DataFrames |
+| `test_orquestacion.py` | Manejo de errores y trazas de `src/orquestacion/tareas.py` (tarea T1.3), sin Spark ni Airflow salvo un caso: código de salida y estado de una tarea fallida, fallo forzado y recuperación, demora para probar timeouts, compuerta de calidad, fallos rápidos de la ingestión, resumen de `notificar` (fallidas, interrumpidas, no ejecutadas y completadas) y retención de `data/_staging/` (limpieza de exitosas y purga por antigüedad). Detalle en `docs/orquestacion/manejo_errores_logging.md` |
 
 ## Cómo ejecutarlas
 
