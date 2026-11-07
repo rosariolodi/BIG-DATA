@@ -52,6 +52,9 @@ PYTHON = os.getenv("DATAMARCA_PYTHON", "python")
 REINTENTOS = int(os.getenv("DATAMARCA_RETRIES", "3"))
 ESPERA_REINTENTO_S = int(os.getenv("DATAMARCA_RETRY_DELAY_SEG", "60"))
 ESPERA_MAXIMA_S = int(os.getenv("DATAMARCA_MAX_RETRY_DELAY_SEG", "600"))
+# Límite de la corrida completa. Se puede bajar solo para probar el timeout de la corrida (T1.3);
+# al vencer, Airflow marca la corrida fallida y deja en skipped las tareas sin terminar.
+TIMEOUT_CORRIDA_MIN = int(os.getenv("DATAMARCA_DAGRUN_TIMEOUT_MIN", "60"))
 
 
 def _alerta_reintento(context):
@@ -100,7 +103,7 @@ with DAG(
     catchup=False,
     max_active_runs=1,          # una corrida a la vez: silver/gold se sobrescriben por partición
     max_active_tasks=4,
-    dagrun_timeout=timedelta(hours=1),
+    dagrun_timeout=timedelta(minutes=TIMEOUT_CORRIDA_MIN),
     default_args=default_args,
     tags=["datamarca", "unidad4", "batch"],
 ) as dag:
