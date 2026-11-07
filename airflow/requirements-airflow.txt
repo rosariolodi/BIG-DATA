@@ -1,0 +1,6 @@
+# Dependencias del pipeline dentro de la imagen de Airflow (Airflow ya viene instalado en la imagen).
+# Se instalan con las restricciones de Airflow para no romper su entorno.
+pyspark==3.5.3
+pandas>=1.5
+pyarrow>=8.0.0
+setuptools   # Python 3.12 ya no trae distutils y pyspark 3.5 lo usa en toPandas()
