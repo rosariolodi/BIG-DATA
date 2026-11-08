@@ -99,6 +99,57 @@ Las pruebas generan sus propios datos pequeños y no leen `data/raw/`. Cubren la
 
 ---
 
+<!-- T1.4-AIRFLOW-EXECUTION-START -->
+## Ejecución orquestada con Apache Airflow
+
+El repositorio incorpora el DAG `datamarca_pipeline`, que coordina las etapas de ingestión, validación, transformación, persistencia y notificación mediante Apache Airflow. Cada tarea ejecuta el proceso correspondiente a través de `src/orquestacion/tareas.py`.
+
+Esta modalidad corresponde a la orquestación local con Airflow. No debe confundirse con el job de Azure Databricks que ejecuta directamente `src/main.py`: el DAG utiliza las rutas locales configuradas para el entorno de Airflow.
+
+### Inicio rápido con Docker
+
+Desde la raíz del repositorio:
+
+```bash
+cd airflow
+if [ ! -f .env ]; then
+    cp .env.example .env
+else
+    echo "Ya existe .env; se conserva."
+fi
+docker compose build
+docker compose up airflow-init
+docker compose up -d
+docker compose ps
+```
+
+En Windows PowerShell, desde la raíz del repositorio:
+
+```powershell
+Set-Location airflow
+if (-not (Test-Path .env)) {
+    Copy-Item .env.example .env
+}
+docker compose build
+docker compose up airflow-init
+docker compose up -d
+docker compose ps
+```
+
+Cuando los servicios estén activos, abre `http://localhost:8080`, localiza `datamarca_pipeline`, actívalo y selecciona **Trigger** para iniciar una ejecución manual. El DAG también tiene una programación diaria a las 02:00, con zona horaria `America/Bogota`.
+
+### Resultados y evidencias
+
+- `data/processed/`: resultados procesados de las capas `silver` y `gold`.
+- `data/_staging/<corrida>/`: archivos intermedios, estados y métricas de cada ejecución.
+- `reports/orquestacion/evidencia/`: documentación y capturas de ejecuciones exitosas y fallidas versionadas en el repositorio.
+- `reports/orquestacion/exportar_logs.py`: script auxiliar para exportar los registros de una corrida. Los archivos exportados se guardan en `reports/orquestacion/evidencia/logs/<nombre>/`.
+
+La guía detallada de instalación, ejecución, pruebas y variables de entorno está en [`airflow/README.md`](airflow/README.md).
+<!-- T1.4-AIRFLOW-EXECUTION-END -->
+
+---
+
 ## Variables de entorno y credenciales
 
 Ninguna variable ni credencial se versiona. Los valores se definen en cada entorno.
