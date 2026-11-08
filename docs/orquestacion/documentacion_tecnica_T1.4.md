@@ -1,10 +1,15 @@
 # Documentación técnica de la orquestación — Unidad 4, T1.4
 
 **Proyecto:** DATAMARCA S.A. — Pipeline Batch con PySpark
+
 **Responsable:** Julián Camargo
+
 **Fecha:** 7 de noviembre de 2026
+
 **Tecnología de orquestación:** Apache Airflow 3.3.2
+
 **Motor de procesamiento:** Apache Spark / PySpark
+
 **Entorno de ejecución documentado:** Docker local y GitHub Codespaces
 
 ---
@@ -30,11 +35,17 @@ Documentar y justificar técnicamente la arquitectura de orquestación implement
 ### 2.2. Objetivos específicos
 
 - Justificar la selección de Apache Airflow frente a AWS Step Functions.
+
 - Describir la arquitectura de ejecución y los componentes que participan en la orquestación.
+
 - Analizar la responsabilidad operativa del Scheduler, DAG Processor, API Server, ejecutor y base de datos de metadatos.
+
 - Explicar la configuración de reintentos, tiempos de espera y backoff exponencial.
+
 - Evaluar las mediciones de ejecución y el aprovechamiento del paralelismo.
+
 - Documentar las estrategias de retención, trazabilidad y recuperación ante fallos.
+
 - Identificar limitaciones de la implementación y recomendaciones para un entorno productivo.
 
 ## 3. Justificación de la tecnología seleccionada
@@ -46,15 +57,25 @@ Para la orquestación del pipeline se considera Apache Airflow como tecnología 
 Ambas soluciones permiten definir flujos de trabajo, establecer dependencias, controlar estados y gestionar fallos. Sin embargo, presentan diferencias en su modelo de operación y en la integración con la arquitectura existente.
 
 | Criterio | Apache Airflow | AWS Step Functions |
+
 |---|---|---|
+
 | Modelo de operación | Plataforma de orquestación que puede autogestionarse o desplegarse mediante servicios administrados | Servicio administrado de AWS |
+
 | Definición de flujos | DAG definidos mediante Python | Máquinas de estados definidas mediante Amazon States Language |
+
 | Integración con Python | Integración directa con el código del proyecto | Integración mediante estados, tareas y servicios compatibles |
+
 | Integración con Spark | Permite ejecutar procesos PySpark mediante operadores y procesos externos | Puede coordinar ejecuciones de servicios de procesamiento compatibles con AWS |
+
 | Infraestructura | Requiere administrar el entorno de ejecución, almacenamiento de metadatos y componentes de Airflow cuando es autogestionado | AWS administra la infraestructura del servicio |
+
 | Portabilidad | Puede ejecutarse localmente, en contenedores y en diferentes infraestructuras | Está integrado principalmente con el ecosistema AWS |
+
 | Observabilidad | Interfaz web, estados de tareas y registros de ejecución | Historial de ejecuciones, estados y herramientas de observabilidad de AWS |
+
 | Operación | Requiere administración de servicios, actualizaciones, monitoreo y almacenamiento | Reduce la administración de infraestructura de orquestación |
+
 | Adecuación al proyecto | Alta para la arquitectura Python y Docker existente | Requeriría adaptar la solución al ecosistema AWS |
 
 ### 3.2. Justificación de Apache Airflow
@@ -87,23 +108,27 @@ La implementación utiliza Docker Compose, lo que facilita reproducir el entorno
 
 La interfaz de Airflow permite consultar el estado de cada tarea, los intentos realizados, los registros de ejecución y el historial de las corridas.
 
-### 3.3. ¿Por qué no se seleccionó AWS Step Functions?
+### 3.3. ¿Por qué no se seleccionó AWS Step Functions ni Google Cloud Composer?
 
-AWS Step Functions constituye una alternativa válida, especialmente cuando una arquitectura utiliza principalmente servicios administrados de AWS.
+AWS Step Functions constituye una alternativa válida, especialmente cuando una arquitectura utiliza principalmente servicios administrados de AWS. Sin embargo, su adopción debe analizarse en función del ecosistema tecnológico definido para DATAMARCA.
 
-Sin embargo, DATAMARCA ya cuenta con un pipeline desarrollado en PySpark y una estrategia de procesamiento que contempla ejecución local y despliegue en Azure Databricks.
+En la Unidad 2 se seleccionó Microsoft Azure como plataforma de nube para la arquitectura del proyecto. Por esta razón, incorporar AWS Step Functions supondría introducir una dependencia de un proveedor diferente al seleccionado, lo que aumentaría la complejidad de integración, administración y gobierno de la solución.
 
-Adoptar Step Functions implicaría incorporar una dependencia adicional del ecosistema AWS y adaptar la integración de las tareas a sus mecanismos de ejecución y servicios compatibles.
+Adicionalmente, aunque Step Functions permite coordinar flujos de trabajo y servicios de procesamiento, su integración con el pipeline existente requeriría adaptar la ejecución de los procesos PySpark a los mecanismos y servicios compatibles con AWS.
 
-Esto no representa una limitación funcional de Step Functions, sino una consideración de coherencia arquitectónica: para la implementación actual, Airflow permite aprovechar el código existente y mantener una plataforma de orquestación independiente del proveedor de infraestructura.
+También se considera Google Cloud Composer como una alternativa basada en Apache Airflow. No obstante, Cloud Composer es un servicio administrado propio de Google Cloud y no una alternativa nativa de Azure. Por tanto, no se selecciona como mecanismo de despliegue para la arquitectura definida.
+
+Apache Airflow ofrece una alternativa independiente del proveedor, que puede desplegarse sobre infraestructura compatible con Azure y permite conservar la definición de los flujos mediante DAG en Python. Esto facilita mantener la coherencia con la estrategia tecnológica del proyecto y reutilizar el código de procesamiento existente.
+
+La implementación documentada actualmente utiliza Docker Compose para ejecutar y validar la orquestación. Esto no significa que Airflow ya esté desplegado productivamente en Azure, sino que la tecnología seleccionada permite una evolución hacia ese entorno sin depender de los servicios de orquestación de AWS o Google Cloud.
 
 ### 3.4. Decisión arquitectónica
 
 Se mantiene Apache Airflow como herramienta de orquestación para la solución documentada.
 
-La decisión se fundamenta en la reutilización del código Python, la flexibilidad del DAG, el paralelismo, el control de errores y la posibilidad de ejecutar el entorno mediante contenedores.
+La decisión se fundamenta en la reutilización del código Python, la flexibilidad del DAG, el paralelismo, el control de errores, la portabilidad y la coherencia con la selección de Microsoft Azure realizada en la Unidad 2.
 
-AWS Step Functions podría evaluarse nuevamente si el proyecto migra hacia una arquitectura predominantemente basada en servicios administrados de AWS.
+AWS Step Functions y Google Cloud Composer podrían evaluarse si en el futuro se modifica la estrategia de infraestructura y se justifica adoptar servicios administrados de sus respectivos proveedores.
 
 ---
 
@@ -116,9 +141,13 @@ La arquitectura implementada utiliza Apache Airflow 3.3.2 y Docker Compose.
 Los servicios definidos son:
 
 - PostgreSQL: almacenamiento de metadatos de Airflow.
+
 - API Server: proporciona la interfaz y los servicios de API.
+
 - Scheduler: programa las ejecuciones y administra el estado de las tareas.
+
 - DAG Processor: analiza y procesa las definiciones de los DAG.
+
 - Airflow Init: servicio de inicialización y migración de la base de datos.
 
 El entorno utiliza `LocalExecutor`, por lo que no cuenta con un servicio de workers independientes. Las tareas se ejecutan localmente desde el entorno del scheduler.
@@ -126,12 +155,19 @@ El entorno utiliza `LocalExecutor`, por lo que no cuenta con un servicio de work
 ### 4.2. Componentes y responsabilidades
 
 | Componente | Responsabilidad | Consideración operativa |
+
 |---|---|---|
+
 | Scheduler | Programa las tareas, evalúa dependencias y administra su ejecución | Requiere disponibilidad continua para coordinar el DAG |
+
 | DAG Processor | Analiza los archivos Python que definen los DAG | Su carga depende de la cantidad y complejidad de los DAG |
+
 | API Server | Expone la interfaz web y los servicios de API | Permite consultar ejecuciones y administrar el entorno |
+
 | LocalExecutor | Ejecuta las tareas en el entorno local de Airflow | Comparte los recursos del entorno de ejecución |
+
 | PostgreSQL | Almacena metadatos, estados, ejecuciones y otra información operativa | Requiere persistencia, respaldo y mantenimiento |
+
 | Docker Compose | Coordina los servicios y sus volúmenes | Facilita la reproducción del entorno |
 
 La implementación utiliza un volumen persistente denominado `pgdata` para PostgreSQL y otro denominado `airflow-logs` para los registros de ejecución.
@@ -145,18 +181,31 @@ El DAG `datamarca_pipeline` está compuesto por doce tareas de procesamiento y u
 Las tareas se organizan de la siguiente manera:
 
 | Identificador | Tarea | Función |
+
 |---|---|---|
+
 | T1 | `ingestar_transacciones` | Verifica el origen de los datos de transacciones |
+
 | T2 | `ingestar_logs` | Verifica el origen de los registros de e-commerce |
+
 | T3 | `validar_transacciones` | Valida la calidad de las transacciones |
+
 | T4 | `validar_logs` | Valida la calidad de los registros de e-commerce |
+
 | T5 | `compuerta_calidad` | Evalúa el porcentaje de registros rechazados |
+
 | T6 | `limpiar_transacciones` | Limpia los datos de transacciones |
+
 | T7 | `limpiar_logs` | Limpia los registros de e-commerce |
+
 | T8 | `unir` | Integra las fuentes de información |
+
 | T9 | `agregar` | Calcula las agregaciones de negocio |
+
 | T10 | `persistir_silver` | Guarda los datos limpios en la capa Silver |
+
 | T11 | `persistir_gold` | Guarda las agregaciones en la capa Gold |
+
 | T12 | `notificar` | Genera el resumen del resultado de la corrida |
 
 La tarea `corrida_completa` permite determinar si las etapas de persistencia finalizaron correctamente.
@@ -215,14 +264,24 @@ La ejecución está configurada para las 02:00, utilizando la zona horaria `Amer
 También se establecen los siguientes parámetros:
 
 | Parámetro | Valor | Justificación |
+
 |---|---|---|
-| `schedule` | `0 2 * * *` | Ejecución diaria programada |
+
+| `schedule` | `0 2 * * *` | Ejecuta el pipeline diariamente a las 02:00, hora de Colombia, cuando la partición correspondiente al día anterior ya ha finalizado su ventana de generación de datos. Esto permite procesar información diaria completa y reducir el riesgo de leer una partición todavía en actualización. |
+
 | `catchup` | `False` | Evita ejecutar automáticamente todas las fechas históricas pendientes |
+
 | `max_active_runs` | `1` | Impide que varias corridas del mismo DAG se ejecuten simultáneamente |
+
 | `retries` | `3` | Permite recuperar tareas ante fallos transitorios |
+
 | `retry_delay` | 60 segundos | Define la espera inicial antes del primer reintento |
+
 | `retry_exponential_backoff` | `True` | Incrementa progresivamente el tiempo de espera |
+
 | `max_retry_delay` | 600 segundos | Establece el límite máximo de espera |
+
+La programación se establece a las 02:00 (America/Bogota) para permitir que los procesos de generación y disponibilidad de datos del día anterior hayan finalizado antes de iniciar el procesamiento. De esta manera, el pipeline trabaja sobre una partición diaria completa, disminuyendo el riesgo de inconsistencias ocasionadas por información parcial. Esta decisión supone que las fuentes de datos cumplen con la disponibilidad esperada antes de la hora programada.
 
 La programación diaria está definida en el código, aunque la evidencia disponible no demuestra una prueba específica del disparo automático a las 02:00.
 
@@ -231,15 +290,25 @@ La programación diaria está definida en el código, aunque la evidencia dispon
 Se establecen límites de tiempo para evitar que las tareas permanezcan ejecutándose indefinidamente.
 
 | Etapa | Timeout |
+
 |---|---:|
+
 | Ingestión | 5 minutos |
+
 | Compuerta de calidad | 2 minutos |
+
 | Validación | 15 minutos |
+
 | Limpieza | 15 minutos |
+
 | Unión | 15 minutos |
+
 | Agregación | 15 minutos |
+
 | Persistencia | 20 minutos |
+
 | Notificación | 5 minutos |
+
 | Corrida completa | 60 minutos |
 
 Los tiempos de ejecución reales de las tareas son considerablemente inferiores a estos límites en las pruebas realizadas.
@@ -265,7 +334,9 @@ El backoff exponencial incrementa progresivamente el tiempo de espera entre inte
 Con una espera inicial de 60 segundos, los intervalos teóricos de referencia son aproximadamente:
 
 - Primer reintento: 60 segundos.
+
 - Segundo reintento: 120 segundos.
+
 - Tercer reintento: 240 segundos.
 
 La configuración establece un máximo de 600 segundos.
@@ -279,16 +350,23 @@ Durante la primera ronda de pruebas, realizada el 6 de noviembre de 2026, se pro
 La configuración utilizada fue:
 
 - `DATAMARCA_RETRIES=3`
+
 - `DATAMARCA_RETRY_DELAY_SEG=60`
+
 - Fallo controlado mediante `DATAMARCA_FALLAR_EN=limpiar_logs`
 
 Los tiempos observados fueron:
 
 | Intento | Hora de inicio (UTC) | Espera desde el intento anterior |
+
 |---|---|---:|
+
 | 1 | 02:23:21 | — |
+
 | 2 | 02:24:52 | 91 segundos |
+
 | 3 | 02:27:54 | 183 segundos |
+
 | 4 | 02:34:14 | 380 segundos |
 
 Las esperas observadas muestran un incremento progresivo y se encuentran dentro de los rangos esperados para un comportamiento exponencial.
@@ -302,10 +380,15 @@ El 7 de noviembre de 2026 se realizó una segunda ronda de pruebas en GitHub Cod
 Los resultados fueron:
 
 | Intento | Hora de inicio | Espera desde el fallo anterior |
+
 |---|---|---:|
+
 | 1 | 11:19:07 | — |
+
 | 2 | 11:20:43 | 96 segundos |
+
 | 3 | 11:24:15 | 212 segundos |
+
 | 4 | 11:29:01 | 286 segundos |
 
 Los tres intervalos se encuentran dentro de los rangos observados en la primera ronda.
@@ -315,9 +398,13 @@ Además, ninguno de los intervalos alcanzó el límite máximo de 600 segundos.
 ### 6.4. Comparación de resultados
 
 | Reintento | Docker local | Codespaces |
+
 |---|---:|---:|
+
 | Primero | 91 s | 96 s |
+
 | Segundo | 183 s | 212 s |
+
 | Tercero | 380 s | 286 s |
 
 Las dos mediciones confirman que el tiempo de espera aumenta progresivamente entre los intentos.
@@ -353,10 +440,15 @@ Antes de implementar el DAG, se realizó una estimación utilizando mediciones d
 Los resultados fueron:
 
 | Indicador | Tiempo |
+
 |---|---:|
+
 | Ejecución secuencial estimada | 140,75 s |
+
 | Rama Silver estimada | 55,88 s |
+
 | Rama Gold estimada | 87,84 s |
+
 | Ruta crítica estimada | 87,84 s |
 
 La ruta crítica estimada correspondía a la rama Gold, debido a las operaciones de unión, agregación y persistencia.
@@ -370,25 +462,41 @@ El 6 de noviembre de 2026 se ejecutó una corrida exitosa del DAG en Docker loca
 Las duraciones individuales registradas fueron:
 
 | Tarea | Duración |
+
 |---|---:|
+
 | `ingestar_transacciones` | 1,00 s |
+
 | `ingestar_logs` | 0,14 s |
+
 | `validar_transacciones` | 22,30 s |
+
 | `validar_logs` | 22,47 s |
+
 | `compuerta_calidad` | 0,08 s |
+
 | `limpiar_transacciones` | 14,88 s |
+
 | `limpiar_logs` | 14,96 s |
+
 | `unir` | 18,23 s |
+
 | `agregar` | 27,13 s |
+
 | `persistir_silver` | 45,79 s |
+
 | `persistir_gold` | 19,98 s |
 
 Los indicadores generales fueron:
 
 | Indicador | Tiempo |
+
 |---|---:|
+
 | Suma de las tareas en secuencia | 187,0 s |
+
 | Ruta crítica calculada | 103,7 s |
+
 | Duración real de la corrida | 116,2 s |
 
 La ruta crítica medida corresponde a la rama Gold.
@@ -436,12 +544,19 @@ El código implementa un mecanismo común de ejecución que captura excepciones,
 Entre los mecanismos implementados se encuentran:
 
 - Captura de excepciones y registro del traceback.
+
 - Almacenamiento del estado de ejecución por tarea.
+
 - Verificación previa de la existencia y estructura de los archivos de entrada.
+
 - Separación de los errores técnicos y los errores de calidad mediante `CompuertaCalidadError`.
+
 - Verificación de la existencia de los resultados intermedios.
+
 - Cierre de las sesiones Spark mediante `spark.stop()`.
+
 - Aislamiento de errores en la tarea de notificación.
+
 - Registro de estados que permiten identificar tareas interrumpidas.
 
 ### 8.2. Comportamiento ante una falla
@@ -463,17 +578,29 @@ En las pruebas se provocó un fallo en `limpiar_logs` mediante:
 El resultado observado fue:
 
 | Grupo de tareas | Resultado |
+
 |---|---|
+
 | Ingestión | Success |
+
 | Validación | Success |
+
 | Compuerta de calidad | Success |
+
 | `limpiar_transacciones` | Success |
+
 | `limpiar_logs` | Failed después de cuatro intentos |
+
 | `unir` | Upstream_failed |
+
 | `agregar` | Upstream_failed |
+
 | `persistir_silver` | Upstream_failed |
+
 | `persistir_gold` | Upstream_failed |
+
 | `notificar` | Success |
+
 | `corrida_completa` | Upstream_failed |
 
 La prueba demuestra que las tareas dependientes de la operación fallida no continúan ejecutándose, mientras que la rama independiente puede finalizar.
@@ -507,10 +634,15 @@ La ruta se configura mediante la variable:
 Esta estructura permite almacenar los resultados necesarios entre tareas independientes, incluyendo:
 
 - Registros válidos de cada fuente.
+
 - Métricas de calidad.
+
 - Registros limpios.
+
 - Datos unidos.
+
 - Agregaciones.
+
 - Estados individuales de las tareas.
 
 El identificador de corrida permite separar los resultados de diferentes ejecuciones y facilita la recuperación y el análisis de fallos.
@@ -520,14 +652,19 @@ El identificador de corrida permite separar los resultados de diferentes ejecuci
 La implementación documentada en T1.3 establece la siguiente política:
 
 | Tipo de corrida | Política | Justificación |
+
 |---|---|---|
+
 | Exitosa | Se eliminan los archivos intermedios y se conservan estados y métricas | Los resultados finales ya están almacenados en Silver y Gold |
+
 | Fallida | Se conserva completa durante siete días | Permite investigar el error o reanudar la corrida |
+
 | Corridas antiguas | Se eliminan las carpetas cuya antigüedad supera siete días | Evita acumulación innecesaria de almacenamiento |
 
 La configuración utiliza:
 
 - `DATAMARCA_LIMPIAR_STAGING=true`
+
 - `DATAMARCA_RETENCION_DIAS=7`
 
 Es importante distinguir que estos valores se proponen en el archivo `.env.example`, mientras que los valores predeterminados del código no activan automáticamente la limpieza ni la purga por antigüedad.
@@ -551,12 +688,19 @@ La política de siete días proporciona un margen de revisión que cubre varios 
 La arquitectura genera diferentes tipos de registros para permitir el seguimiento de las ejecuciones.
 
 | Elemento | Ubicación | Información |
+
 |---|---|---|
+
 | Logs de Airflow | Volumen `airflow-logs` | Eventos de cada tarea e intento |
+
 | Estado por tarea | `data/_staging/<corrida>/estado/` | Estado, intento, duración y error |
+
 | Métricas de calidad | `data/_staging/<corrida>/metricas/` | Registros leídos, válidos, rechazados y porcentaje de rechazo |
+
 | Resumen de corrida | `reports/orquestacion/resumen_<corrida>.md` y `.json` | Resultado general y estado de las tareas |
+
 | Metadatos de Airflow | PostgreSQL | Ejecuciones, estados e información operativa |
+
 | Evidencias versionadas | `reports/orquestacion/evidencia/` | Resúmenes, capturas y mediciones |
 
 La información generada permite identificar cuándo comienza una tarea, cuánto tarda, cuántos intentos requiere y cuál fue el resultado final.
@@ -572,10 +716,15 @@ permite exportar los logs y estados de una corrida para conservar evidencias fue
 La documentación de T1.3 identifica algunas brechas que deben considerarse:
 
 - Los logs de Airflow se almacenan en un volumen local de Docker y pueden perderse si se elimina dicho volumen.
+
 - No existe un canal externo de notificación configurado por defecto.
+
 - El historial de intentos almacenado en los archivos de estado puede conservar únicamente el último intento.
+
 - La cuarentena no está separada por corrida.
+
 - El timeout global del DAG puede finalizar una corrida sin que se ejecute la tarea `notificar`.
+
 - Algunas pruebas de timeout y evidencias de contenido de logs continúan pendientes.
 
 Estas limitaciones deben considerarse antes de trasladar la arquitectura a un entorno productivo.
@@ -619,10 +768,15 @@ Esto significa que los procesos de ejecución y los servicios de orquestación c
 A medida que aumente la cantidad de tareas o el volumen de datos, será necesario evaluar:
 
 - CPU disponible para el scheduler y los procesos Spark.
+
 - Memoria disponible para las sesiones de Spark.
+
 - Capacidad de almacenamiento para los logs y resultados intermedios.
+
 - Recursos destinados a PostgreSQL.
+
 - Tiempo de inicio de los procesos independientes.
+
 - Cantidad de tareas que pueden ejecutarse simultáneamente.
 
 No se dispone de mediciones de CPU, memoria o consumo de disco por componente en las evidencias analizadas. Por lo tanto, no es posible establecer todavía una capacidad máxima de procesamiento o dimensionamiento productivo.
@@ -635,6 +789,16 @@ Sin embargo, si el volumen de datos y la frecuencia de ejecución aumentan, ser�
 
 También se recomienda implementar monitoreo de infraestructura y políticas de respaldo para PostgreSQL y los logs.
 
+### 11.4. Conclusión sobre la carga operativa para DATAMARCA
+
+La implementación de Apache Airflow proporciona a DATAMARCA control sobre la planificación, ejecución, seguimiento y recuperación de los procesos del pipeline. Sin embargo, al utilizar una arquitectura autogestionada con Docker Compose y LocalExecutor, el equipo debe asumir directamente la administración y disponibilidad de los componentes de orquestación.
+
+Esto implica mantener los servicios de Airflow y PostgreSQL, supervisar las ejecuciones del DAG, revisar los logs, atender fallos, gestionar los reintentos, controlar el almacenamiento y realizar respaldos de la información operativa. También será necesario monitorear el consumo de CPU y memoria, especialmente porque los procesos Spark comparten recursos con los servicios de orquestación.
+
+En consecuencia, Airflow reduce la necesidad de desarrollar mecanismos propios para coordinar las tareas, pero no elimina la carga de administración de infraestructura. DATAMARCA deberá contar con responsables técnicos que garanticen el mantenimiento, monitoreo y recuperación del entorno.
+
+Para una etapa productiva se recomienda evaluar el esfuerzo de administración frente a una alternativa administrada compatible con Azure, considerando los costos, la disponibilidad, la escalabilidad y las capacidades operativas del equipo.
+
 ---
 
 ## 12. Resultados de las pruebas
@@ -642,8 +806,11 @@ También se recomienda implementar monitoreo de infraestructura y políticas de 
 La validación de la arquitectura se realizó en dos rondas.
 
 | Ronda | Fecha | Entorno | Resultado |
+
 |---|---|---|---|
+
 | 1 | 6 de noviembre de 2026 | Docker local | Corrida exitosa y fallo controlado con medición de backoff |
+
 | 2 | 7 de noviembre de 2026 | GitHub Codespaces | Corrida exitosa y fallo controlado con capturas de Airflow y auditoría |
 
 ### 12.1. Corrida exitosa
@@ -663,7 +830,9 @@ La corrida tuvo una duración de 10 minutos y 24 segundos.
 El resultado fue:
 
 - Siete tareas en estado success.
+
 - Una tarea en estado failed.
+
 - Cinco tareas en estado upstream_failed.
 
 La tarea `notificar` finalizó correctamente, aunque la corrida completa se marcó como fallida.
@@ -673,7 +842,9 @@ La tarea `notificar` finalizó correctamente, aunque la corrida completa se marc
 Las pruebas permiten validar tres aspectos fundamentales:
 
 1. Las dependencias del DAG impiden que las tareas posteriores se ejecuten cuando falla una tarea requerida.
+
 2. Los reintentos permiten observar el comportamiento del backoff exponencial.
+
 3. La notificación se ejecuta incluso cuando ocurre un fallo intermedio.
 
 Las evidencias se encuentran documentadas en:
@@ -689,14 +860,23 @@ Las pruebas se realizaron con 5.000 registros por fuente, por lo que sus resulta
 A partir de la implementación y de las brechas identificadas en T1.3, se establecen las siguientes recomendaciones:
 
 | Riesgo o limitación | Impacto | Recomendación |
+
 |---|---|---|
+
 | Uso de LocalExecutor | Competencia por CPU y memoria entre tareas Spark y servicios de Airflow | Evaluar un ejecutor distribuido cuando aumente la carga |
+
 | Logs en volumen local | Pérdida de registros al eliminar el volumen | Configurar almacenamiento remoto y retención |
+
 | Ausencia de alertas externas por defecto | Un fallo podría pasar inadvertido si nadie consulta Airflow | Configurar un webhook seguro o SMTP |
+
 | Timeout global sin notificación garantizada | Una corrida puede finalizar sin resumen | Implementar y probar un callback de fallo del DAG |
+
 | Historial de intentos limitado | Dificultad para reconstruir la secuencia completa de recuperación | Registrar los eventos de cada intento |
+
 | Cuarentena compartida entre corridas | Posible pérdida de registros rechazados anteriores | Separar la cuarentena por identificador de corrida |
+
 | Ausencia de métricas de recursos | No es posible dimensionar con precisión el entorno | Medir CPU, memoria, almacenamiento y duración por servicio |
+
 | Pruebas limitadas a volúmenes pequeños | No se conoce el comportamiento a escala productiva | Ejecutar pruebas con mayor volumen y carga concurrente |
 
 Estas recomendaciones no deben interpretarse como funcionalidades que ya estén implementadas. Corresponden a oportunidades de mejora identificadas durante la revisión técnica.
@@ -726,12 +906,21 @@ En consecuencia, se concluye que la solución cumple su propósito como arquitec
 La elaboración de esta documentación se fundamenta en los siguientes archivos del repositorio:
 
 1. `airflow/README.md` — Configuración, instalación y ejecución de Airflow.
+
 2. `airflow/docker-compose.yaml` — Definición de servicios y volúmenes.
+
 3. `airflow/dags/datamarca_pipeline.py` — Implementación del DAG.
+
 4. `src/orquestacion/tareas.py` — Lógica de ejecución de las tareas.
+
 5. `docs/orquestacion/dependencias.md` — Dependencias, paralelismo y ruta crítica.
+
 6. `docs/orquestacion/manejo_errores_logging.md` — Manejo de errores, trazabilidad y retención.
+
 7. `reports/orquestacion/evidencia/README.md` — Resultados de las dos rondas de pruebas.
+
 8. `reports/orquestacion/evidencia/corrida_exitosa.md` — Evidencia de ejecución exitosa.
+
 9. `reports/orquestacion/evidencia/fallo_forzado_limpiar_logs.md` — Evidencia de recuperación y fallo controlado.
+
 10. `docs/Justificacion_batch_vs_streaming.md` — Justificación del enfoque de procesamiento batch.
