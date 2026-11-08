@@ -187,6 +187,19 @@ Los registros rechazados individualmente se mantienen en cuarentena y las métri
 
 Esta decisión evita incorporar información de una corrida que no cumple los criterios de calidad establecidos para el proyecto.
 
+### 4.6. Elección de los operadores
+
+Las doce tareas de procesamiento usan `BashOperator`, y `corrida_completa` usa `EmptyOperator`, que solo refleja el resultado de la corrida. Cada tarea ejecuta `python src/orquestacion/tareas.py <tarea> --run-id <corrida> --intento <n>` en su propio proceso.
+
+Se eligió `BashOperator` y no `SparkSubmitOperator` ni `HttpOperator` por las siguientes razones:
+
+- **No todas las tareas usan Spark.** Ocho de las doce abren una sesión de Spark (validación, limpieza, unión, agregación y persistencia). Las otras cuatro no: `ingestar_transacciones` e `ingestar_logs` verifican los archivos de origen con Python, `compuerta_calidad` lee métricas en JSON y `notificar` escribe el resumen y envía el webhook opcional. Un operador específico de Spark solo serviría para las ocho primeras, y el DAG tendría que mezclar operadores distintos.
+- **Spark corre en modo local dentro del contenedor de Airflow.** La imagen instala `pyspark` (`airflow/requirements-airflow.txt`) y el master por defecto es `local[2]` (`DATAMARCA_SPARK_MASTER`). No hay un clúster de Spark al que enviar una aplicación con `spark-submit`, que es el caso para el que está pensado `SparkSubmitOperator`. Este operador no se evaluó en el proyecto.
+- **Un solo punto de entrada.** El mismo comando sirve para el DAG y para depurar una tarea a mano (sección "Una tarea suelta" de `airflow/README.md`). Si la tarea falla, el script termina con código de salida distinto de cero: Airflow la marca como fallida y aplica los reintentos.
+- **`HttpOperator` no aplica.** Ninguna tarea llama a un servicio HTTP como paso del flujo. El webhook de `notificar` es opcional y lo envía el propio `tareas.py`.
+
+Esta elección tiene costos. Cada tarea arranca su propia sesión de Spark, con su tiempo de arranque, y los procesos comparten los recursos del contenedor (sección 11.2). Si el pipeline se traslada a un clúster, por ejemplo al job de Azure Databricks que ya existe en el repositorio, convendría reemplazar `BashOperator` por un operador que envíe el trabajo al clúster. Esa alternativa no se evaluó.
+
 ---
 
 ## 5. Configuración operativa
