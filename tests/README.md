@@ -42,3 +42,19 @@ alertas sin iniciar Spark: `python -m pytest tests/test_alertas.py tests/test_re
 El workflow `.github/workflows/tests.yml` comprueba el comando completo con Python 3.12
 y Java 17 en Windows y Ubuntu; sus resultados publicados acreditan cada plataforma.
 Esto no convierte Airflow en una aplicación nativa de Windows: el DAG se ejecuta en Docker/Linux.
+
+### Verificación del 9 de noviembre de 2026
+
+La [ejecución 42604479494](https://github.com/rosariolodi/BIG-DATA/actions/runs/42604479494)
+probó el commit `5f21886` con `python -m pytest tests -v`, Python 3.12 y Java 17:
+
+| Plataforma | Resultado |
+|---|---|
+| Windows (`windows-latest`) | 141 passed; ninguna prueba omitida |
+| Ubuntu (`ubuntu-latest`) | 141 passed; ninguna prueba omitida |
+
+La suite completa también pasó localmente en macOS (141 passed). Las pruebas nuevas
+cubren la importación sin `fcntl`, el mismo byte de bloqueo en Windows, el plazo ante
+contención, la liberación al salir con error y la escritura de recibos sin fsync de
+directorios. Las pruebas existentes de hilos y procesos se ejecutaron con el mecanismo
+real de cada sistema operativo. No se utilizó el webhook de Teams durante estas pruebas.

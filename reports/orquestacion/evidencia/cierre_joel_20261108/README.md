@@ -52,3 +52,18 @@ de las corridas e identificadores de notificación; no se observan correos, nomb
 personales legibles, contraseñas ni URLs del webhook. Sí hay avatares pequeños de la
 interfaz de Teams. La captura del Workflow muestra la ejecución y parte del nombre de la cuenta
 en la cabecera, sin el disparador abierto ni su URL secreta. Esta revisión no elimina las versiones históricas de Git.
+
+
+## Corrección de compatibilidad con Windows — 9 de noviembre de 2026
+
+El PR #34 introdujo una importación incondicional de `fcntl` que impedía recopilar
+las pruebas en Windows. El commit `5f21886` de `unidad4-alertas-b1` selecciona
+`msvcrt.locking` en Windows y conserva `fcntl.flock` en POSIX; mantiene el bloqueo
+entre procesos, el plazo y la prohibición de enviar sin deduplicación. También evita
+abrir/sincronizar directorios con APIs POSIX en Windows y hace explícita la lectura
+UTF-8 en las pruebas. No se desactivan ni omiten las pruebas de alertas.
+
+[Verificación real de GitHub Actions](https://github.com/rosariolodi/BIG-DATA/actions/runs/42604479494):
+141 pruebas aprobadas en Windows y 141 en Ubuntu, con Python 3.12 y Java 17.
+La suite local de macOS también aprobó las 141 pruebas. Esta corrección posterior al
+PR #34 permanece en la rama de Joel; no se ha integrado todavía en main.
