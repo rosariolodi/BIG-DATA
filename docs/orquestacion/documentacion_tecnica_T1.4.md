@@ -2,7 +2,7 @@
 
 ### Actualización operativa del 8 de noviembre de 2026
 
-La integración con Teams ya se verificó ante éxito, fallo y vencimiento de la corrida. El respaldo B1 usa `on_failure_callback`; no reactiva la tarea `notificar` que Airflow deja en `skipped`. El límite normal sigue siendo de 60 minutos. [Ver las evidencias y la distinción entre aviso de respaldo y resumen](../../reports/orquestacion/evidencia/cierre_joel_20261108/README.md). Esta actualización corresponde al trabajo local de Joel, pendiente de revisión e integración futura en main; las secciones históricas de limitaciones deben leerse con ese alcance.
+La integración con Teams ya se verificó ante éxito, fallo y vencimiento de la corrida. El respaldo B1 usa `on_failure_callback`; no reactiva la tarea `notificar` que Airflow deja en `skipped`. El límite normal sigue siendo de 60 minutos. [Ver las evidencias y la distinción entre aviso de respaldo y resumen](../../reports/orquestacion/evidencia/cierre_joel_20261108/README.md). Esta actualización corresponde al trabajo de Joel integrado en main mediante el PR #34, commit `1728d23`; las secciones históricas de limitaciones deben leerse con ese alcance.
 
 **Proyecto:** DATAMARCA S.A. — Pipeline Batch con PySpark
 **Responsable:** Julián Camargo

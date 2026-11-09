@@ -2,7 +2,7 @@
 
 ## Cierre de Joel — 8 de noviembre de 2026
 
-[Canal de Teams, prueba real de B1 y limpieza de archivos locales](cierre_joel_20261108/README.md). Incluye corridas de éxito, fallo y vencimiento, recibos filtrados y capturas. Las rondas anteriores se conservan como evidencia histórica. La integración en main queda pendiente por decisión de Joel.
+[Canal de Teams, prueba real de B1 y limpieza de archivos locales](cierre_joel_20261108/README.md). Incluye corridas de éxito, fallo y vencimiento, recibos filtrados y capturas. Las rondas anteriores se conservan como evidencia histórica. Integrado en main mediante el PR #34, commit `1728d23`, el 8 de noviembre de 2026 (Bogotá).
 
 Corridas del DAG `datamarca_pipeline` en Docker con Airflow 3.3.2. Las horas son de Bogotá (UTC−5), salvo que se indique UTC.
 
