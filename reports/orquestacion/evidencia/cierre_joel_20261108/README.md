@@ -65,5 +65,6 @@ UTF-8 en las pruebas. No se desactivan ni omiten las pruebas de alertas.
 
 [Verificación real de GitHub Actions](https://github.com/rosariolodi/BIG-DATA/actions/runs/42604479494):
 141 pruebas aprobadas en Windows y 141 en Ubuntu, con Python 3.12 y Java 17.
-La suite local de macOS también aprobó las 141 pruebas. Esta corrección posterior al
-PR #34 permanece en la rama de Joel; no se ha integrado todavía en main.
+La suite local de macOS también aprobó las 141 pruebas. El seguimiento de esta corrección posterior al PR #34 está en el
+[PR #35](https://github.com/rosariolodi/BIG-DATA/pull/35); su estado de integración
+se consulta en ese enlace.
