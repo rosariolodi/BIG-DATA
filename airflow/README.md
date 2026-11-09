@@ -401,5 +401,5 @@ en el canal; HTTP 202 por sí solo no acredita publicación en Teams.
 `job_listo.json` y `tmp_tiempos/` quedan fuera del seguimiento de Git y están ignorados.
 Los comandos del README raíz siguen generándolos: sustitución del JSON de Databricks
 y descarga con `az storage blob download-batch --destination .\tmp_tiempos`. El cambio
-solo afecta al índice de Git; conserva las copias locales. `test_ejecuciones_airflow/`
-conserva sus evidencias versionadas.
+solo afecta al índice de Git; conserva las copias locales. Las evidencias versionadas
+se conservan en [`reports/orquestacion/evidencia/`](../reports/orquestacion/evidencia/), incluidas las capturas en `capturas/`.

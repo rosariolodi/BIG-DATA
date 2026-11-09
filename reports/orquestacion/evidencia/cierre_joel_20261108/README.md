@@ -2,7 +2,7 @@
 
 ## Alcance y autorización
 
-Joel confirmó en la conversación que Rosario ya había aprobado los cambios al DAG y la retirada de los archivos locales generados. El trabajo de `unidad4-alertas-b1` se integró en main mediante el [PR #34](https://github.com/rosariolodi/BIG-DATA/pull/34), commit `1728d23`, el 8 de noviembre de 2026 (Bogotá). Kinan debe ejecutar su corrida desde ese main o una revisión posterior acordada con el equipo.
+Joel confirmó en la conversación que Rosario ya había aprobado los cambios al DAG y la retirada de los archivos locales generados. El trabajo de `unidad4-alertas-b1` se integró en main mediante el [PR #34](https://github.com/rosariolodi/BIG-DATA/pull/34), commit `1728d23`, el 8 de noviembre de 2026 (Bogotá). La verificación posterior desde main y sus evidencias se integraron mediante el [PR #36](https://github.com/rosariolodi/BIG-DATA/pull/36).
 
 ## 1. Canal de alertas
 
@@ -42,7 +42,7 @@ Al terminar se restauraron scheduler y DAG Processor con `DATAMARCA_DAGRUN_TIMEO
 
 ## Estado de entrega
 
-Los tres puntos se integraron en main mediante el PR #34 a petición de Joel. La prueba posterior y las evidencias asignadas a Kinan siguen siendo una actividad separada. El aviso previo de Rosario se basa en la confirmación de Joel; no se envió ningún mensaje a terceros desde esta sesión.
+Los tres puntos asignados a Joel están integrados en main mediante el [PR #34](https://github.com/rosariolodi/BIG-DATA/pull/34). La corrección de compatibilidad con Windows y la documentación actualizada se integraron mediante el [PR #35](https://github.com/rosariolodi/BIG-DATA/pull/35). La verificación final del DAG y las evidencias de Kinan se integraron mediante el [PR #36](https://github.com/rosariolodi/BIG-DATA/pull/36). El visto bueno previo de Rosario fue confirmado por Joel.
 
 
 ## Revisión visual de las capturas — 9 de noviembre de 2026
@@ -65,6 +65,6 @@ UTF-8 en las pruebas. No se desactivan ni omiten las pruebas de alertas.
 
 [Verificación real de GitHub Actions](https://github.com/rosariolodi/BIG-DATA/actions/runs/42604479494):
 141 pruebas aprobadas en Windows y 141 en Ubuntu, con Python 3.12 y Java 17.
-La suite local de macOS también aprobó las 141 pruebas. El seguimiento de esta corrección posterior al PR #34 está en el
-[PR #35](https://github.com/rosariolodi/BIG-DATA/pull/35); su estado de integración
-se consulta en ese enlace.
+La suite local de macOS también aprobó las 141 pruebas. Esta corrección se integró
+en main mediante el [PR #35](https://github.com/rosariolodi/BIG-DATA/pull/35),
+commit `7ef4624`.
