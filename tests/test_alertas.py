@@ -41,7 +41,7 @@ def contexto():
 
 
 def recibo():
-    return json.loads(alertas.ruta_recibo(RUN).read_text())
+    return json.loads(alertas.ruta_recibo(RUN).read_text(encoding="utf-8"))
 
 
 def test_envio_correcto(post, caplog):
@@ -140,7 +140,7 @@ def test_callback_contexto_minimo_y_sin_id(post):
 def test_dag_conserva_callbacks_de_tarea_y_notificar():
     # Verifica el cableado sin importar Airflow; la importación real se valida en Docker.
     ruta = Path(__file__).resolve().parents[1] / "airflow/dags/datamarca_pipeline.py"
-    arbol = ast.parse(ruta.read_text())
+    arbol = ast.parse(ruta.read_text(encoding="utf-8"))
     llamada = next(n for n in ast.walk(arbol) if isinstance(n, ast.Call)
                    and isinstance(n.func, ast.Name) and n.func.id == "DAG")
     parametros = {kw.arg: kw.value for kw in llamada.keywords}

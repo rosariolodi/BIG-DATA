@@ -1,5 +1,5 @@
 """Registro persistente de notificaciones; no contiene payloads ni credenciales."""
-import fcntl
+import errno
 import json
 import math
 import os
@@ -9,6 +9,15 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Cada plataforma usa un bloqueo del sistema operativo, también entre procesos.
+try:
+    import fcntl
+except ImportError:  # Windows no proporciona fcntl.
+    import msvcrt
+    fcntl = None
+else:
+    msvcrt = None
 
 ESTADOS = {"reserved", "sending", "confirmed", "failed", "ambiguous", "expired"}
 
@@ -65,6 +74,41 @@ def verificar():
     return {"almacenamiento": "disponible", "deduplicacion": "disponible"}
 
 
+def _adquirir_bloqueo(archivo):
+    if msvcrt is None:
+        fcntl.flock(archivo, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return
+    # locking() empieza en la posición actual; todos bloquean el mismo byte.
+    # Se permite bloquear más allá del EOF: el archivo no necesita contenido.
+    os.lseek(archivo.fileno(), 0, os.SEEK_SET)
+    try:
+        msvcrt.locking(archivo.fileno(), msvcrt.LK_NBLCK, 1)
+    except OSError as error:
+        if error.errno in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+            raise BlockingIOError("bloqueo ocupado") from None
+        raise
+
+
+def _liberar_bloqueo(archivo):
+    if msvcrt is None:
+        fcntl.flock(archivo, fcntl.LOCK_UN)
+    else:
+        os.lseek(archivo.fileno(), 0, os.SEEK_SET)
+        msvcrt.locking(archivo.fileno(), msvcrt.LK_UNLCK, 1)
+
+
+def _sincronizar_directorio(directorio):
+    # Windows no admite os.open/fsync sobre un directorio. El archivo temporal
+    # sí se sincroniza antes de replace; solo POSIX añade fsync del directorio.
+    if msvcrt is not None:
+        return
+    fd = os.open(directorio, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 @contextmanager
 def bloquear(id_, espera=None):
     archivo = ruta(id_).with_suffix(".lock")
@@ -73,11 +117,11 @@ def bloquear(id_, espera=None):
         raise ValueError("plazo de bloqueo inválido")
     preparar()
     fd = os.open(archivo, os.O_CREAT | os.O_RDWR, 0o600)
-    with os.fdopen(fd, "a+") as bloqueo:
+    with os.fdopen(fd, "r+b") as bloqueo:
         fin = time.monotonic() + limite
         while True:
             try:
-                fcntl.flock(bloqueo, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                _adquirir_bloqueo(bloqueo)
                 break
             except BlockingIOError:
                 restante = fin - time.monotonic()
@@ -87,7 +131,7 @@ def bloquear(id_, espera=None):
         try:
             yield
         finally:
-            fcntl.flock(bloqueo, fcntl.LOCK_UN)
+            _liberar_bloqueo(bloqueo)
 
 
 def cargar(id_):
@@ -112,12 +156,7 @@ def guardar(archivo, datos):
             salida.flush()
             os.fsync(salida.fileno())
         temporal.replace(archivo)
-        # También sincronizar el directorio para persistir el rename ante caída del host.
-        fd = os.open(archivo.parent, os.O_RDONLY)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        _sincronizar_directorio(archivo.parent)
     finally:
         if temporal is not None:
             temporal.unlink(missing_ok=True)

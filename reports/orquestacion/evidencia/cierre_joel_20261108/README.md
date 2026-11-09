@@ -2,7 +2,7 @@
 
 ## Alcance y autorización
 
-Joel confirmó en la conversación que Rosario ya había aprobado los cambios al DAG y la retirada de los archivos locales generados. El trabajo se prepara en `unidad4-alertas-b1`; **no se integra en main** hasta que Joel lo solicite. Kinan debe ejecutar su corrida después de esa integración futura, sobre la revisión que se acuerde con el equipo.
+Joel confirmó en la conversación que Rosario ya había aprobado los cambios al DAG y la retirada de los archivos locales generados. El trabajo de `unidad4-alertas-b1` se integró en main mediante el [PR #34](https://github.com/rosariolodi/BIG-DATA/pull/34), commit `1728d23`, el 8 de noviembre de 2026 (Bogotá). Kinan debe ejecutar su corrida desde ese main o una revisión posterior acordada con el equipo.
 
 ## 1. Canal de alertas
 
@@ -42,4 +42,29 @@ Al terminar se restauraron scheduler y DAG Processor con `DATAMARCA_DAGRUN_TIMEO
 
 ## Estado de entrega
 
-Los tres puntos están preparados y probados en la rama de Joel. Queda para más adelante revisar el cambio y llevarlo a `main`, por instrucción expresa de Joel. El aviso previo de Rosario se basa en la confirmación de Joel; no se envió ningún mensaje a terceros desde esta sesión.
+Los tres puntos se integraron en main mediante el PR #34 a petición de Joel. La prueba posterior y las evidencias asignadas a Kinan siguen siendo una actividad separada. El aviso previo de Rosario se basa en la confirmación de Joel; no se envió ningún mensaje a terceros desde esta sesión.
+
+
+## Revisión visual de las capturas — 9 de noviembre de 2026
+
+Se abrieron las dos capturas de Teams. Se ven el equipo/canal del proyecto, resultados
+de las corridas e identificadores de notificación; no se observan correos, nombres
+personales legibles, contraseñas ni URLs del webhook. Sí hay avatares pequeños de la
+interfaz de Teams. La captura del Workflow muestra la ejecución y parte del nombre de la cuenta
+en la cabecera, sin el disparador abierto ni su URL secreta. Esta revisión no elimina las versiones históricas de Git.
+
+
+## Corrección de compatibilidad con Windows — 9 de noviembre de 2026
+
+El PR #34 introdujo una importación incondicional de `fcntl` que impedía recopilar
+las pruebas en Windows. El commit `5f21886` de `unidad4-alertas-b1` selecciona
+`msvcrt.locking` en Windows y conserva `fcntl.flock` en POSIX; mantiene el bloqueo
+entre procesos, el plazo y la prohibición de enviar sin deduplicación. También evita
+abrir/sincronizar directorios con APIs POSIX en Windows y hace explícita la lectura
+UTF-8 en las pruebas. No se desactivan ni omiten las pruebas de alertas.
+
+[Verificación real de GitHub Actions](https://github.com/rosariolodi/BIG-DATA/actions/runs/42604479494):
+141 pruebas aprobadas en Windows y 141 en Ubuntu, con Python 3.12 y Java 17.
+La suite local de macOS también aprobó las 141 pruebas. El seguimiento de esta corrección posterior al PR #34 está en el
+[PR #35](https://github.com/rosariolodi/BIG-DATA/pull/35); su estado de integración
+se consulta en ese enlace.

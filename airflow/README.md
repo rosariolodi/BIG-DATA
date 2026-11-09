@@ -235,7 +235,7 @@ las versiones antiguas no comparten los bloqueos nuevos.
 | `ambiguous` | Timeout, error de transporte o proceso interrumpido durante `sending`. Exige reconciliación manual. |
 | `expired` | Reserva antigua sin POST o reenvío expresamente autorizado. Solo la recuperación operativa puede convertirla de nuevo en `reserved`. |
 
-Un bloqueo `flock` por identificador se mantiene durante todas las transiciones y el POST.
+Un bloqueo del sistema operativo por identificador (`flock` en Linux/macOS y `msvcrt.locking` en Windows) se mantiene durante todas las transiciones y el POST.
 El plazo máximo de espera es **2 segundos**, configurable con
 `DATAMARCA_ALERT_LOCK_TIMEOUT_SEG`. Si vence, se registra `bloqueo_ocupado` y no se envía
 fuera de la deduplicación. Si el registro persistente está inaccesible, corrupto o no se

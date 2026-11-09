@@ -209,7 +209,7 @@ def test_retencion_no_borra_registro_persistente(post, monkeypatch):
 def test_no_persiste_payload_ni_webhook_y_redacta_urls_de_auditoria(post):
     alertas.enviar_una_vez("credencial-fixture-que-no-debe-persistir", RUN, "fixture")
     cli.reconciliar(ID, "confirmar", "ana", "verificado https://teams.invalid/secreto-fixture", True)
-    contenido = estado.ruta(ID).read_text()
+    contenido = estado.ruta(ID).read_text(encoding="utf-8")
     assert "credencial-fixture" not in contenido
     assert "secreto-fixture" not in contenido
     assert "https://" not in contenido
