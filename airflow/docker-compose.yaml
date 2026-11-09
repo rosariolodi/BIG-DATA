@@ -22,9 +22,11 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-apiserver:8080/execution/"
     DATAMARCA_HOME: /opt/datamarca
     DATAMARCA_PYTHON: python
+    DATAMARCA_ALERT_STATE_DIR: ${DATAMARCA_ALERT_STATE_DIR:-/opt/airflow/alert_state}
   volumes:
     - ..:/opt/datamarca          # todo el repositorio: DAG, src/, data/ y reports/
     - airflow-logs:/opt/airflow/logs
+    - datamarca-alert-state:${DATAMARCA_ALERT_STATE_DIR:-/opt/airflow/alert_state}
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     postgres:
@@ -46,7 +48,7 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    command: ["bash", "-c", "airflow db migrate"]
+    command: ["bash", "-c", 'install -d -m 0700 -o ${AIRFLOW_UID:-50000} -g 0 "$${DATAMARCA_ALERT_STATE_DIR}" && airflow db migrate']
     user: "0:0"
 
   airflow-apiserver:
@@ -56,12 +58,13 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
-    command: scheduler
+    command: ["bash", "-c", "PYTHONPATH=/opt/datamarca/src python -m orquestacion.recuperar_alertas verificar && exec airflow scheduler"]
 
   airflow-dag-processor:
     <<: *airflow-common
-    command: dag-processor
+    command: ["bash", "-c", "PYTHONPATH=/opt/datamarca/src python -m orquestacion.recuperar_alertas verificar && exec airflow dag-processor"]
 
 volumes:
   pgdata:
   airflow-logs:
+  datamarca-alert-state:

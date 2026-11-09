@@ -1,0 +1,93 @@
+{
+  "runs": [
+    {
+      "run_id": "manual__verificacion_teams_real_20261108_01",
+      "dag_state": "success",
+      "start_date": "2026-11-09 01:22:24.697410+00:00",
+      "end_date": "2026-11-09 01:23:44.226133+00:00",
+      "tasks": {
+        "transformacion.limpiar_transacciones": "success",
+        "persistencia.persistir_gold": "success",
+        "corrida_completa": "success",
+        "notificar": "success",
+        "transformacion.unir": "success",
+        "persistencia.persistir_silver": "success",
+        "transformacion.agregar": "success",
+        "ingestion.ingestar_logs": "success",
+        "ingestion.ingestar_transacciones": "success",
+        "validacion.validar_transacciones": "success",
+        "validacion.validar_logs": "success",
+        "validacion.compuerta_calidad": "success",
+        "transformacion.limpiar_logs": "success"
+      },
+      "receipt": {
+        "notificacion_id": "3a0ee1904c49e0fd3bb1c33423ac0b2d6cfcae6394275434b6744affb2742cbd",
+        "origen": "notificar",
+        "estado_envio": "confirmed",
+        "resultado": "enviado",
+        "codigo_http": 202,
+        "envio_http": "enviado"
+      }
+    },
+    {
+      "run_id": "manual__prueba_fallo_teams_20261108_01",
+      "dag_state": "failed",
+      "start_date": "2026-11-09 01:27:29.395328+00:00",
+      "end_date": "2026-11-09 01:27:53.167383+00:00",
+      "tasks": {
+        "transformacion.limpiar_logs": "upstream_failed",
+        "transformacion.limpiar_transacciones": "upstream_failed",
+        "persistencia.persistir_silver": "upstream_failed",
+        "corrida_completa": "upstream_failed",
+        "transformacion.agregar": "upstream_failed",
+        "persistencia.persistir_gold": "upstream_failed",
+        "notificar": "success",
+        "ingestion.ingestar_logs": "success",
+        "ingestion.ingestar_transacciones": "success",
+        "validacion.validar_transacciones": "failed",
+        "validacion.compuerta_calidad": "upstream_failed",
+        "transformacion.unir": "upstream_failed",
+        "validacion.validar_logs": "success"
+      },
+      "receipt": {
+        "notificacion_id": "4530d6a725e0d84711222f432521b617d0cdfbfa6700d32038b4af0ec4be2fb7",
+        "origen": "notificar",
+        "estado_envio": "confirmed",
+        "resultado": "enviado",
+        "codigo_http": 202,
+        "envio_http": "enviado"
+      }
+    },
+    {
+      "run_id": "manual__verificacion_timeout_b1_20261108_01",
+      "dag_state": "failed",
+      "start_date": "2026-11-09 01:35:36.638740+00:00",
+      "end_date": "2026-11-09 01:36:36.922354+00:00",
+      "tasks": {
+        "ingestion.ingestar_transacciones": "success",
+        "validacion.validar_transacciones": "success",
+        "ingestion.ingestar_logs": "skipped",
+        "validacion.validar_logs": "skipped",
+        "validacion.compuerta_calidad": "skipped",
+        "transformacion.limpiar_transacciones": "skipped",
+        "transformacion.limpiar_logs": "skipped",
+        "transformacion.unir": "skipped",
+        "transformacion.agregar": "skipped",
+        "persistencia.persistir_silver": "skipped",
+        "persistencia.persistir_gold": "skipped",
+        "notificar": "skipped",
+        "corrida_completa": "skipped"
+      },
+      "receipt": {
+        "notificacion_id": "c7b874057124b3d7ff6b409b5e9c6fcd6c5bd7b97f1d0eaee550bb8d454c2825",
+        "origen": "callback_dag",
+        "estado_envio": "confirmed",
+        "resultado": "enviado",
+        "codigo_http": 202,
+        "envio_http": "enviado"
+      },
+      "deduplicacion_callback_repetido": "duplicado_omitido"
+    }
+  ],
+  "timeout_restaurado_segundos": 3600
+}

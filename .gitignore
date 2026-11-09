@@ -52,3 +52,10 @@ crash.log
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Archivos locales generados según README (Databricks y descarga de tiempos)
+/job_listo.json
+/tmp_tiempos/
+
+# Registro persistente local de alertas: separado del staging y de su retención.
+/data/alert_state/

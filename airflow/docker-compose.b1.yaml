@@ -1,0 +1,32 @@
+# Usar con -p datamarca-b1 -f docker-compose.yaml -f docker-compose.b1.yaml.
+# Entorno separado y receptor local; nunca necesita un webhook de Teams real.
+x-b1-env: &b1-env
+  DATAMARCA_WEBHOOK_URL: http://teams-receptor:8765/
+  DATAMARCA_DAGRUN_TIMEOUT_MIN: "60"
+ # DATAMARCA_DEMORAR_EN: ingestar_logs:180
+  DATAMARCA_FALLAR_EN: ""
+  DATAMARCA_RETRIES: "0"
+  DATAMARCA_RETENCION_DIAS: "0"
+  DATAMARCA_LIMPIAR_STAGING: "false"
+  DATAMARCA_STAGING_ROOT: /opt/datamarca/data/_staging/b1_integracion
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+
+services:
+  airflow-init:
+    env_file: !reset []
+  airflow-scheduler:
+    env_file: !reset []
+    environment: *b1-env
+  airflow-dag-processor:
+    env_file: !reset []
+    environment: *b1-env
+  airflow-apiserver:
+    env_file: !reset []
+    environment: *b1-env
+    # Evita conflicto con el entorno habitual en 8080 (Compose 2.24.4+).
+    ports: !override ["8081:8080"]
+  teams-receptor:
+    image: python:3.12-slim
+    command: ["python", "/tests/teams_receptor.py"]
+    volumes:
+      - ../tests/integration:/tests:ro

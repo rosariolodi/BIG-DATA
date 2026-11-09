@@ -22,7 +22,7 @@ import time
 
 import pytest
 
-from orquestacion import tareas
+from orquestacion import alertas, tareas
 
 # run_id real de Airflow: trae ':' y '+', que tareas.limpiar_run_id reemplaza
 RUN = "manual__2026-11-07T02:22:55.545687+00:00"
@@ -33,6 +33,7 @@ INTERMEDIOS = ("validos_transacciones", "validos_logs_ecommerce", "limpio_transa
 def corrida(tmp_path, monkeypatch):
     """Zona de trabajo y reportes en una carpeta temporal, sin variables de la demostración."""
     monkeypatch.setattr(tareas, "STAGING_ROOT", tmp_path / "staging")
+    monkeypatch.setenv("DATAMARCA_ALERT_STATE_DIR", str(tmp_path / "alert_state"))
     monkeypatch.setattr(tareas, "REPORTES_DIR", tmp_path / "reportes")
     for variable in ("DATAMARCA_FALLAR_EN", "DATAMARCA_FALLAR_INTENTOS", "DATAMARCA_DEMORAR_EN",
                      "DATAMARCA_LIMPIAR_STAGING", "DATAMARCA_RETENCION_DIAS", "DATAMARCA_WEBHOOK_URL"):
@@ -328,6 +329,7 @@ def test_retencion_de_una_corrida_exitosa(corrida, monkeypatch, limpiar, quedan_
     carpeta = tareas.dir_corrida(RUN)
     assert all((carpeta / n).exists() == quedan_intermedios for n in INTERMEDIOS)
     assert (carpeta / "estado").is_dir() and (carpeta / "metricas").is_dir()   # la traza se conserva
+    assert alertas.ruta_recibo(RUN).is_file()              # la limpieza conserva la deduplicación
 
 
 def test_una_corrida_fallida_conserva_sus_intermedios_aunque_la_limpieza_este_activa(corrida, monkeypatch):
@@ -344,14 +346,14 @@ def test_un_fallo_del_webhook_no_cambia_el_resultado_de_la_corrida(corrida, monk
     def sin_red(*args, **kwargs):
         raise OSError("sin red")
     monkeypatch.setenv("DATAMARCA_WEBHOOK_URL", "https://ejemplo.invalid/webhook")
-    monkeypatch.setattr(tareas.urllib.request, "urlopen", sin_red)
+    monkeypatch.setattr(alertas.urllib.request, "urlopen", sin_red)
     _corrida_exitosa()
 
     assert tareas.ejecutar("notificar", RUN, 1) == 0
 
     texto, _ = _resumen()                                   # el resumen se escribió antes del envío
     assert "EXITOSA" in texto
-    assert "No se pudo completar la notificación: sin red" in caplog.text
+    assert "TEAMS resultado=error_envio" in caplog.text
 
 
 def test_la_retencion_no_depende_de_que_el_webhook_funcione(corrida, monkeypatch):
@@ -361,7 +363,7 @@ def test_la_retencion_no_depende_de_que_el_webhook_funcione(corrida, monkeypatch
     monkeypatch.setenv("DATAMARCA_WEBHOOK_URL", "https://ejemplo.invalid/webhook")
     monkeypatch.setenv("DATAMARCA_LIMPIAR_STAGING", "true")
     monkeypatch.setenv("DATAMARCA_RETENCION_DIAS", "7")
-    monkeypatch.setattr(tareas.urllib.request, "urlopen", sin_red)
+    monkeypatch.setattr(alertas.urllib.request, "urlopen", sin_red)
     vieja = _carpeta_corrida("manual__vieja", dias_atras=8)
     _corrida_exitosa()
     _intermedios()

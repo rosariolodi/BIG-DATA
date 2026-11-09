@@ -23,7 +23,7 @@ Variables de entorno (detalle en airflow/README.md):
   SHUFFLE_PARTITIONS         particiones de shuffle; por defecto 8 (los datos son pequeños)
   DATAMARCA_LIMPIAR_STAGING  true = borra los resultados intermedios de una corrida exitosa
   DATAMARCA_RETENCION_DIAS   días que se conserva la carpeta de cualquier corrida; 0 o vacío = no se purga
-  DATAMARCA_WEBHOOK_URL      opcional: URL (Slack/Teams/genérico) a la que notificar
+  DATAMARCA_WEBHOOK_URL      opcional: URL de Teams Workflows a la que notificar
   DATAMARCA_FALLAR_EN        nombre de una tarea a la que se le fuerza un fallo (demostración, T1.3)
   DATAMARCA_FALLAR_INTENTOS  cuántos intentos fallan antes de dejar pasar la tarea (defecto: todos)
   DATAMARCA_DEMORAR_EN       <tarea>:<segundos>: demora una tarea para probar los timeouts (T1.3)
@@ -40,7 +40,6 @@ import shutil
 import sys
 import time
 import traceback
-import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -48,6 +47,8 @@ SRC_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = SRC_DIR.parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+
+from orquestacion.alertas import enviar_una_vez
 
 STAGING_ROOT = Path(os.getenv("DATAMARCA_STAGING_ROOT", ROOT_DIR / "data" / "_staging"))
 REPORTES_DIR = ROOT_DIR / "reports" / "orquestacion"
@@ -333,7 +334,7 @@ def aplicar_retencion(run_id: str, exito: bool) -> dict:
     """Retención de la zona de trabajo (docs/orquestacion/manejo_errores_logging.md, sección 5).
 
     1. Corrida exitosa con DATAMARCA_LIMPIAR_STAGING=true: se borran sus intermedios y se conservan
-       estado/ y metricas/. Las corridas fallidas se conservan para investigarlas o reanudarlas.
+       estado/ y metricas/. Los recibos nuevos viven fuera del staging. Las corridas fallidas se conservan para investigarlas o reanudarlas.
     2. DATAMARCA_RETENCION_DIAS=N (N > 0): se borran las carpetas de otras corridas cuya última
        actividad tenga más de N días. Solo se tocan carpetas con estado/ (las crea este script),
        para no borrar nada ajeno si DATAMARCA_STAGING_ROOT apunta a otro lugar.
@@ -407,13 +408,9 @@ def notificar(run_id: str) -> dict:
     except Exception as e:
         log.error("No se pudo guardar el resumen de la corrida: %s", e)
     try:
-        url = os.getenv("DATAMARCA_WEBHOOK_URL")
-        if url:
-            req = urllib.request.Request(url, data=json.dumps({"text": texto}).encode(),
-                                         headers={"Content-Type": "application/json"})
-            urllib.request.urlopen(req, timeout=10)
+        enviar_una_vez(texto, run_id, "notificar", carpeta_legacy=dir_corrida(run_id))
     except Exception as e:
-        log.error("No se pudo completar la notificación: %s", e)
+        log.error("No se pudo completar la notificación: tipo=%s", type(e).__name__)
     try:
         aplicar_retencion(run_id, exito)
     except Exception as e:

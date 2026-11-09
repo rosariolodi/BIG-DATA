@@ -1,0 +1,12 @@
+# Aplicar despues de docker-compose.b1.yaml para enviar alertas a Teams real.
+# El webhook se obtiene de airflow/.env; no se guarda en este archivo.
+x-teams-real: &teams-real
+  DATAMARCA_WEBHOOK_URL: ${DATAMARCA_WEBHOOK_URL:?Configura DATAMARCA_WEBHOOK_URL en .env}
+
+services:
+  airflow-scheduler:
+    environment: *teams-real
+  airflow-dag-processor:
+    environment: *teams-real
+  airflow-apiserver:
+    environment: *teams-real
