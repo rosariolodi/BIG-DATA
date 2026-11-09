@@ -21,6 +21,7 @@ variables de entorno (ver airflow/README.md).
 """
 import logging
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -41,6 +42,10 @@ log = logging.getLogger(__name__)
 
 # airflow/dags/ -> airflow/ -> [RAÍZ DEL PROYECTO]
 RAIZ = Path(os.getenv("DATAMARCA_HOME", Path(__file__).resolve().parents[2]))
+if str(RAIZ / "src") not in sys.path:
+    sys.path.insert(0, str(RAIZ / "src"))
+from orquestacion.alertas import alerta_fallo_dag
+
 SCRIPT = RAIZ / "src" / "orquestacion" / "tareas.py"
 PYTHON = os.getenv("DATAMARCA_PYTHON", "python")
 
@@ -104,6 +109,7 @@ with DAG(
     max_active_runs=1,          # una corrida a la vez: silver/gold se sobrescriben por partición
     max_active_tasks=4,
     dagrun_timeout=timedelta(minutes=TIMEOUT_CORRIDA_MIN),
+    on_failure_callback=alerta_fallo_dag,
     default_args=default_args,
     tags=["datamarca", "unidad4", "batch"],
 ) as dag:

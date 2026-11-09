@@ -1,5 +1,9 @@
 # Evidencia de la orquestación con Airflow (Unidad 4)
 
+## Cierre de Joel — 8 de noviembre de 2026
+
+[Canal de Teams, prueba real de B1 y limpieza de archivos locales](cierre_joel_20261108/README.md). Incluye corridas de éxito, fallo y vencimiento, recibos filtrados y capturas. Las rondas anteriores se conservan como evidencia histórica. La integración en main queda pendiente por decisión de Joel.
+
 Corridas del DAG `datamarca_pipeline` en Docker con Airflow 3.3.2. Las horas son de Bogotá (UTC−5), salvo que se indique UTC.
 
 | Ronda | Fecha | Entorno y rama | Qué aporta |

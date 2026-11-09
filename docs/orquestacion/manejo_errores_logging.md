@@ -1,5 +1,14 @@
 # Manejo de errores y logging (Unidad 4, tarea T1.3)
 
+## Actualización de cierre de Joel — 8 de noviembre de 2026
+
+B5 tiene un canal externo operativo: Microsoft Teams, **DATAMARCA - Proyecto Big Data / Alertas - Pipeline DATAMARCA**, verificado con una corrida exitosa y otra con fallo. B1 tiene un respaldo implementado y probado con un vencimiento real de un minuto: `on_failure_callback` envía el aviso de `dagrun_timeout` aunque Airflow deje `notificar` en `skipped`. No se afirma que la tarea cancelada se ejecute ni que ese aviso genere el resumen completo. El límite normal de 60 minutos quedó restaurado.
+
+La retirada del seguimiento de `job_listo.json` y `tmp_tiempos/` conserva las copias locales. Joel confirmó el visto bueno de Rosario. Los cambios permanecen en su rama; todavía no están integrados en main por decisión de Joel. El resto del documento conserva el diagnóstico y pendientes históricos de T1.3: las referencias antiguas a B1 y B5 como no implementadas se leen a la luz de esta actualización.
+
+Evidencia y alcance: [cierre de Joel](../../reports/orquestacion/evidencia/cierre_joel_20261108/README.md).
+
+
 Proyecto Spark Pipeline - DATAMARCA S.A. · Responsable: Kinan
 
 Este documento:
