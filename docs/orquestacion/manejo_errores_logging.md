@@ -32,9 +32,9 @@ Convención:
 | Paso 3: alertas ante fallo | `on_retry_callback` y `on_failure_callback` (log WARNING/ERROR); `notificar` (log ERROR, resumen y webhook opcional) | `evidencia/fallo_forzado_limpiar_logs.md`; `notificar` en success al final de la corrida fallida (`evidencia/capturas/corrida_fallida_3_auditoria.png`) | Cumple en parte: sin canal externo configurado (B5) y sin aviso si vence el tiempo de la corrida (B1) |
 | Paso 3: estados controlados, sin propagación silenciosa | `ejecutar()` devuelve código 1; dependientes en `upstream_failed`; `notificar` con `all_done`; `corrida_completa` marca la corrida como fallida | `evidencia/fallo_forzado_limpiar_logs.md`, `evidencia/capturas/corrida_fallida_*.png` y pruebas | Cumple (verificado en Airflow) |
 | Paso 3: manejo explícito de excepciones | Sección 2 | `tests/test_orquestacion.py` | Cumple (verificado) |
-| Paso 2: timeout | `execution_timeout` por tarea (2 a 20 min) y `dagrun_timeout` (60 min, configurable) | Sección 6 | Comportamiento confirmado en el código de Airflow; falta la corrida de prueba |
+| Paso 2: timeout | `execution_timeout` por tarea (2 a 20 min) y `dagrun_timeout` (60 min, configurable) | Sección 6 | `dagrun_timeout` verificado por Joel con el scheduler real (`evidencia/cierre_joel_20261108/`). Timeout de una tarea: confirmado en el código de Airflow, sin corrida de prueba |
 | Paso 4: trazas completas y auditables | Log por intento, estado por tarea, métricas y resumen por corrida (sección 4) | `evidencia/*.md` y Auditoría de Log de las dos corridas (`evidencia/capturas/`) | Cumple, con brechas B3, B7 y B8 |
-| Paso 4: corrida exitosa y fallo forzado en una tarea intermedia | `DATAMARCA_FALLAR_EN=limpiar_logs` (tarea 7 de 12) | Ronda 1: `evidencia/corrida_exitosa.md` y `evidencia/fallo_forzado_limpiar_logs.md`. Ronda 2: `evidencia/capturas/corrida_exitosa_*.png` y `corrida_fallida_*.png` | Cumple. Faltan la vista *Graph* y el texto de los logs de `limpiar_logs` y `notificar` (sección 10) |
+| Paso 4: corrida exitosa y fallo forzado en una tarea intermedia | `DATAMARCA_FALLAR_EN=limpiar_logs` (tarea 7 de 12) | Ronda 1: `evidencia/corrida_exitosa.md` y `evidencia/fallo_forzado_limpiar_logs.md`. Ronda 2: `evidencia/capturas/corrida_exitosa_*.png` y `corrida_fallida_*.png`. Ronda 3 (verificación final desde `main`): `evidencia/capturas/verificacion_final_*.png` y `evidencia/logs/verificacion_final_*/` | Cumple (verificado) |
 | Recomendación: el log muestra qué tareas se cancelaron y cuáles terminaron antes del fallo | Resumen de `notificar`: "No se ejecutaron por la falla" y "Completadas antes/durante el fallo". En Airflow: intento 0 y `upstream_failed` en las canceladas | `evidencia/fallo_forzado_limpiar_logs.md` y `evidencia/capturas/corrida_fallida_1_tareas.png`, `corrida_fallida_2_tareas.png` | Cumple (verificado) |
 
 ## 2. Cómo maneja los errores `tareas.py`
@@ -131,7 +131,14 @@ En la corrida exitosa:
 
 En la corrida exitosa (`evidencia/capturas/corrida_exitosa_*.png`), las 13 tareas quedan en `success` en el primer intento y la corrida dura 1 min 33 s. No se capturaron el log de `notificar` ni la limpieza de `data/_staging/`.
 
-Conclusión: los estados y su orden en Airflow coinciden con lo esperado en todas las filas. Falta la evidencia del contenido de los logs, que en la ronda 1 se cubrió con el resumen de `notificar`.
+Conclusión de la ronda 2: los estados y su orden en Airflow coinciden con lo esperado en todas las filas. Faltaba el contenido de los logs.
+
+**Ronda 3 (9 de noviembre, verificación final desde `main`).** Una corrida exitosa (`manual__2026-11-09T14:50:01.226020+00:00`) y una con fallo forzado (`manual__2026-11-09T14:58:17.263515+00:00`), con el código de `main` que ya incluye el cierre de Joel (PR #34). Se cumple la lista completa de la sección 4.2, incluida la fila que faltaba:
+- **Estados:** iguales a la ronda 2, en `evidencia/logs/verificacion_final_fallo/estados_airflow.txt` y en la vista *Graph* (`evidencia/capturas/verificacion_final_fallida_graph_expandido.png`).
+- **Texto de los logs:** el WARNING de modo demostración, `FALLO FORZADO` con traceback, `REINTENTO` en los intentos 1 a 3, `FALLO DEFINITIVO` en el 4 (`transformacion.limpiar_logs.intento4.txt`) y el ERROR `NOTIFICACIÓN` con las tareas no ejecutadas y las completadas (`notificar.intento1.txt`).
+- **Corrida exitosa:** INFO `NOTIFICACIÓN` con `EXITOSA` y `Retención: intermedios borrados de la corrida ...`. `evidencia/retencion_staging.txt` confirma que la exitosa conserva solo `estado/`, `metricas/` y `gold_tablas.json`, y la fallida sus intermedios.
+
+El detalle por fila y la tercera medición del backoff (118, 232 y 456 s) están en `evidencia/README.md`, "Ronda 3".
 
 ## 5. Retención de la zona de trabajo (`data/_staging/`)
 
@@ -190,7 +197,7 @@ Las tareas reales tardan entre 0,08 y 46 s (`evidencia/corrida_exitosa.md`): los
 | A. Timeout de una tarea | `DATAMARCA_DEMORAR_EN=compuerta_calidad:300`, `DATAMARCA_RETRIES=1`, `DATAMARCA_RETRY_DELAY_SEG=5` | La compuerta se detiene a los 2 min, se reintenta una vez y queda en `failed`. Lo posterior queda en `upstream_failed` y `notificar` corre. El resumen dice `FALLÓ compuerta_calidad (intento 2): sin cierre (timeout o proceso terminado)`. Unos 5 min en total |
 | B. Timeout de la corrida | `DATAMARCA_DAGRUN_TIMEOUT_MIN=4`, `DATAMARCA_DEMORAR_EN=agregar:600` | A los 4 min la corrida queda en `failed`. `agregar`, `persistir_gold`, `notificar` y `corrida_completa` quedan en `skipped`, y `persistir_silver` probablemente en `success`. No se genera resumen: demuestra B1 |
 
-Estado: las pruebas A y B están preparadas y falta ejecutarlas.
+Estado: la prueba B, el vencimiento de la corrida, la ejecutó Joel el 8 de noviembre con el respaldo de B1 ya implementado. La corrida quedó en `failed`, `notificar` en `skipped`, y `on_failure_callback` envió el aviso (`evidencia/cierre_joel_20261108/`). La prueba A, el timeout de una tarea, sigue preparada sin ejecutar; era opcional.
 
 ## 7. Evidencia: cómo reproducirla
 
@@ -278,21 +285,24 @@ Cada punto de lo asignado en la tarea T1.3, con su evidencia:
 | Lo asignado | Estado | Evidencia |
 |---|---|---|
 | Revisar el manejo explícito de excepciones de `tareas.py` frente a la guía y decir qué más se necesita | Hecho | Secciones 1 a 3: nueve mecanismos, nueve brechas priorizadas (B4 y B9 resueltas) y 34 pruebas en `tests/test_orquestacion.py` |
-| Validar las trazas auditables en Airflow, sobre todo en la corrida fallida: qué tareas se cancelaron y cuáles terminaron antes del fallo | Hecho en los estados de Airflow; falta el texto de los logs | Sección 4.3 y `evidencia/capturas/corrida_fallida_*.png` |
-| Capturas del *Graph* de la corrida exitosa y de la fallida | En parte: Instancias de Tarea, grilla y Auditoría de Log de las dos corridas; falta la vista *Graph* | `evidencia/capturas/` y `evidencia/README.md` |
-| Definir la retención de `data/_staging/` en producción | Hecho: decidida, implementada y probada. Falta verla en una corrida | Sección 5 y `dependencias.md`, sección 9 |
+| Validar las trazas auditables en Airflow, sobre todo en la corrida fallida: qué tareas se cancelaron y cuáles terminaron antes del fallo | Hecho: estados y texto de los logs | Sección 4.3; `evidencia/capturas/corrida_fallida_*.png`; `evidencia/logs/verificacion_final_fallo/` |
+| Capturas del *Graph* de la corrida exitosa y de la fallida | Hecho en la verificación final desde `main` | `evidencia/capturas/verificacion_final_*_graph*.png` |
+| Definir la retención de `data/_staging/` en producción | Hecho: decidida, implementada, probada y observada en una corrida | Sección 5, `dependencias.md` (sección 9) y `evidencia/retencion_staging.txt` |
 | `DATAMARCA_LIMPIAR_STAGING=true` en `airflow/.env.example` | Hecho | `airflow/.env.example` |
 | Retención por días: cambio en `tareas.py` | Hecho: `DATAMARCA_RETENCION_DIAS=7` | Sección 5.2 |
-| Opcional: probar los timeouts | Preparado (gancho `DATAMARCA_DEMORAR_EN` y `dagrun_timeout` configurable); sin ejecutar | Sección 6 |
+| Opcional: probar los timeouts | El de la corrida lo probó Joel (B1). El de una tarea está preparado y sin ejecutar | Sección 6 |
 | Aclarar en `airflow/README.md` que Windows sin Docker no funciona | Hecho | `airflow/README.md`, sección "Sin Docker" |
-| Usar la evidencia existente sin duplicarla | Hecho: la ronda 2 agrega las capturas de Airflow y no repite los resúmenes de la ronda 1 | `evidencia/README.md` |
+| Usar la evidencia existente sin duplicarla | Hecho: cada ronda agrega lo que faltaba en la anterior. Queda una duplicación: `test_ejecuciones_airflow/`, en la raíz, tiene los originales de las capturas, en HEIC y JPEG con extensión `.png` | `evidencia/README.md` |
 
 Pendientes:
 
 | Pendiente | Responsable | Estado |
 |---|---|---|
-| Completar la evidencia de las corridas del 7 de noviembre: vista *Graph* de las dos, log del último intento de `limpiar_logs` y log de `notificar` de las dos (o `exportar_logs.py` con sus `run_id`), retención (paso 5) y pruebas con pyspark (paso 3) | Kinan | Pendiente. Si el Codespace sigue activo no hace falta repetir las corridas: los logs y `data/_staging/` siguen ahí |
+| Verificación final del DAG desde `main` en Docker (GitHub Codespaces): una corrida exitosa y una con fallo forzado; vista *Graph* de las dos; logs de texto del último intento de `limpiar_logs` y de `notificar` de la fallida; retención | Kinan | **Hecho el 9 de noviembre.** `evidencia/README.md`, "Ronda 3". Pendiente solo el commit y el PR |
+| Ninguna captura del repositorio muestra la contraseña de Airflow | Kinan | **Hecho el 9 de noviembre**, también con las capturas de la vista *Graph*: `evidencia/README.md`, "Revisión de contraseñas en las capturas" |
+| Timeout de una sola tarea (prueba A de la sección 6) | Kinan | Opcional, sin ejecutar |
+| Pruebas con pyspark | Equipo | Cubiertas por CI: `.github/workflows/tests.yml` corre la suite completa en Ubuntu y Windows con Java 17 |
 | Visto bueno de Rosario a los cambios en sus archivos (sección 9) | Kinan → Rosario | Pendiente del aviso |
-| `DATAMARCA_LIMPIAR_STAGING`, `DATAMARCA_RETENCION_DIAS` y la política de retención en el README principal | Julián y Joel (T1.4) | Pendiente del aviso |
-| Brechas B1, B2, B3, B5, B6 y B8 | Rosario y el equipo | Propuesto, en orden de prioridad |
+| `DATAMARCA_LIMPIAR_STAGING`, `DATAMARCA_RETENCION_DIAS` y la política de retención en el README principal | Julián y Joel (T1.4) | Documentadas en `airflow/README.md`, sección "Variables de entorno" |
+| Brechas B2, B3, B6 y B8 | Rosario y el equipo | Propuesto, en orden de prioridad. B1 y B5 las resolvió Joel (PR #34): `on_failure_callback` y canal de Teams |
 | `JAVA_HOME` del `Dockerfile` en Apple Silicon | Rosario | Propuesto |

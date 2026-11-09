@@ -10,8 +10,9 @@ Corridas del DAG `datamarca_pipeline` en Docker con Airflow 3.3.2. Las horas son
 |---|---|---|---|
 | 1 | 6 de noviembre de 2026 | Docker local, rama `ivanna` | Resúmenes de `notificar` y backoff medido en los logs (tarea T1.2) |
 | 2 | 7 de noviembre de 2026 | GitHub Codespaces, rama `kinan` | Capturas de Airflow: estados por tarea y Auditoría de Log de una corrida exitosa y una con fallo forzado (tarea T1.3) |
+| 3 | 9 de noviembre de 2026 | GitHub Codespaces, rama `main` (con el cierre de Joel, PR #34) | **Verificación final del DAG:** vista *Graph* de una corrida exitosa y una con fallo forzado, logs de texto exportados y retención de `data/_staging/` |
 
-La ronda 2 no repite los resúmenes de la ronda 1. Agrega lo que faltaba: lo que Airflow registra de cada tarea.
+Cada ronda agrega lo que faltaba en la anterior, sin repetirla. La ronda 2 agrega lo que Airflow registra de cada tarea; la ronda 3, el grafo y el texto de los logs con el código final de `main`.
 
 ## Ronda 1: resúmenes de `notificar`
 
@@ -111,17 +112,97 @@ Las tres esperas vuelven a caer en los rangos de la ronda 1. No llegan al tope d
 - **Aviso ante el fallo.** `notificar` corre aunque haya un fallo (`all_done`) y lo hace una sola vez (`retries=0`).
 - **Trazas auditables.** La Auditoría de Log registra cada cambio de estado con hora, tarea e intento. La cabecera de la corrida dice quién la disparó, cuándo y con qué versión del DAG.
 
-### Lo que estas capturas no muestran
+### Lo que estas capturas no mostraban (cubierto en la ronda 3)
 
-- **La vista *Graph*.** Las capturas usan *Instancias de Tarea* y la grilla, que muestran el mismo estado por tarea, pero no el grafo de dependencias.
-- **El texto de los logs de cada tarea.** Falta, en `limpiar_logs`, el traceback con `FALLO FORZADO`, `REINTENTO` y `FALLO DEFINITIVO`, y en `notificar` el resumen con "No se ejecutaron por la falla". El resumen equivalente de la ronda 1 está en `fallo_forzado_limpiar_logs.md`.
-- **La retención de `data/_staging/`, las pruebas con pyspark en el contenedor y los timeouts.**
+- **La vista *Graph*.** Las capturas de la ronda 2 usan *Instancias de Tarea* y la grilla, que muestran el estado por tarea pero no el grafo de dependencias.
+- **El texto de los logs de cada tarea:** el traceback de `limpiar_logs` y el resumen de `notificar`.
+- **La retención de `data/_staging/`.**
 
-Cómo completarlos: `docs/orquestacion/manejo_errores_logging.md`, secciones 7 y 10.
+Las pruebas con pyspark ya no dependen del contenedor: el workflow `.github/workflows/tests.yml` ejecuta la suite completa en Ubuntu y Windows con Java 17 (141 pruebas aprobadas según `cierre_joel_20261108/README.md`).
+
+## Ronda 3: verificación final desde `main` (T1.3)
+
+Entorno: GitHub Codespaces con Docker, Airflow 3.3.2, rama `main` después del PR #34. Configuración: la de `airflow/.env.example` (`DATAMARCA_RETRIES=3`, `DATAMARCA_RETRY_DELAY_SEG=60`, `DATAMARCA_LIMPIAR_STAGING=true`, `DATAMARCA_RETENCION_DIAS=7`), sin `DATAMARCA_WEBHOOK_URL`. La corrida con fallo agrega `DATAMARCA_FALLAR_EN=limpiar_logs`.
+
+| Corrida | `run_id` | Inicio → fin | Duración | Resultado |
+|---|---|---|---|---|
+| Exitosa | `manual__2026-11-09T14:50:01.226020+00:00` | 09:51:24 → 09:52:53 | 1 min 28 s | **success**: las 13 tareas en success en el primer intento. 5.000 filas leídas y 0 rechazadas por fuente |
+| Con fallo forzado | `manual__2026-11-09T14:58:17.263515+00:00` | 09:58:17 → 10:12:16 | 13 min 59 s | **failed**: 7 en success, `limpiar_logs` en failed tras 4 intentos y 5 en upstream_failed |
+
+Al activar el DAG, Airflow lanzó también `scheduled__2026-11-09T07:00:00+00:00`, que terminó en success. No se usa como evidencia, pero aparece en la retención.
+
+### Archivos
+
+| Archivo | Qué muestra |
+|---|---|
+| `capturas/verificacion_final_exitosa_graph.png` | Vista *Graph* con los grupos colapsados: los cuatro grupos, `notificar` y `corrida_completa` en success. A la derecha, la cabecera de la corrida (Exitoso, 1 min 28 s, disparada por `airflow`) |
+| `capturas/verificacion_final_exitosa_graph_expandido.png` | Vista *Graph* con los grupos expandidos: las 13 tareas en success y sus dependencias |
+| `capturas/verificacion_final_fallida_graph.png` | Vista *Graph* de la corrida con fallo y su cabecera (Fallido, 13 min 59 s) |
+| `capturas/verificacion_final_fallida_graph_expandido.png` | Vista *Graph* expandida: `limpiar_logs` en failed (rojo); `unir`, `agregar`, `persistir_silver`, `persistir_gold` y `corrida_completa` en upstream_failed (naranja); `limpiar_transacciones`, las tareas previas y `notificar` en success |
+| `logs/verificacion_final_fallo/transformacion.limpiar_logs.intento1.txt` a `intento4.txt` | Texto de cada intento de la tarea que falla. El intento 4 es el último |
+| `logs/verificacion_final_fallo/notificar.intento1.txt` | Texto del log de `notificar` en la corrida con fallo |
+| `logs/verificacion_final_fallo/estados_airflow.txt`, `resumen.md` | Estado final de cada tarea según Airflow y resumen de `notificar` |
+| `logs/verificacion_final_exitosa/` | Lo mismo para la corrida exitosa: un archivo por tarea, estados y resumen |
+| `retencion_staging.txt` | Contenido de `data/_staging/` después de las corridas |
+
+Los logs los generó `reports/orquestacion/exportar_logs.py`. Cada línea conserva el JSON de Airflow; las rutas `/home/airflow/...` que aparecen en los traceback son internas del contenedor.
+
+### Qué dicen los logs de la corrida con fallo
+
+| Esperado (`docs/orquestacion/manejo_errores_logging.md`, 4.2) | Observado | Archivo |
+|---|---|---|
+| WARNING de modo demostración en cada tarea | `Modo demostración activo: DATAMARCA_FALLAR_EN=limpiar_logs` en los cuatro intentos y en `notificar` | `limpiar_logs.intento*.txt`, `notificar.intento1.txt` |
+| `FALLO limpiar_logs ... FALLO FORZADO` con traceback y código de salida 1 | Sí, en los cuatro intentos: `RuntimeError: FALLO FORZADO en 'limpiar_logs' (intento N) por DATAMARCA_FALLAR_EN`, el traceback y `Bash command failed` | `limpiar_logs.intento1.txt` a `intento4.txt` |
+| `REINTENTO` en los intentos 1 a 3 | `REINTENTO: tarea=transformacion.limpiar_logs intento=1`, `2` y `3` | `limpiar_logs.intento1.txt` a `intento3.txt` |
+| `FALLO DEFINITIVO` en el último intento | `FALLO DEFINITIVO: dag=datamarca_pipeline tarea=transformacion.limpiar_logs intento=4` | `limpiar_logs.intento4.txt` |
+| `notificar`: ERROR `NOTIFICACIÓN` con `CON FALLO`, la tarea fallida, las no ejecutadas y las completadas | Sí: "FALLÓ `limpiar_logs` (intento 4)", "No se ejecutaron por la falla: unir, agregar, persistir_silver, persistir_gold" y "Completadas antes/durante el fallo: ingestar_transacciones, ingestar_logs, validar_transacciones, validar_logs, compuerta_calidad, limpiar_transacciones" | `notificar.intento1.txt`, `resumen.md` |
+| Estados de Airflow | 7 success, 1 failed, 5 upstream_failed | `estados_airflow.txt` |
+
+`notificar` también registra ERROR `TEAMS resultado=sin_webhook`. Es lo esperado: la URL de Teams no se configuró en el Codespace para no exponerla. Lo mismo ocurre en la corrida exitosa. La entrega real a Teams la verificó Joel el 8 de noviembre (`cierre_joel_20261108/`).
+
+### Backoff exponencial, tercera medición
+
+| Intento de `limpiar_logs` | Inicio | Espera desde el fallo anterior | Rango de la ronda 1 |
+|---|---|---|---|
+| 1 | 09:58:45 | (primer intento) | — |
+| 2 | 10:00:43 | 118 s | 60 a 120 s |
+| 3 | 10:04:35 | 232 s | 120 a 240 s |
+| 4 | 10:12:11 | 456 s | 240 a 480 s |
+
+Las tres esperas caen otra vez en los rangos de las rondas anteriores, más cerca del límite superior que en la ronda 2. Los reintentos ocupan 13 min 26 s de los 13 min 59 s de la corrida.
+
+### Retención de `data/_staging/`
+
+| Carpeta | Contenido después de la corrida | Lectura |
+|---|---|---|
+| `manual__2026-11-09T14-50-01...` (exitosa) | `estado/`, `metricas/`, `gold_tablas.json` | Se borraron los intermedios en Parquet. El log de `notificar` lo registra: `Retención: intermedios borrados de la corrida ...` |
+| `scheduled__2026-11-09T07-00-00...` (exitosa) | `estado/`, `metricas/`, `gold_tablas.json` | Igual que la anterior |
+| `manual__2026-11-09T14-58-17...` (fallida) | `estado/`, `metricas/`, `validos_transacciones/`, `validos_logs_ecommerce/`, `limpio_transacciones/` | Se conservan los intermedios para investigar o reanudar la corrida |
+
+`gold_tablas.json` se conserva porque `aplicar_retencion()` solo borra carpetas. Es un archivo pequeño con la lista de tablas gold de la corrida. La purga a 7 días no se observa en una corrida del mismo día; la cubren las pruebas de `tests/test_orquestacion.py`.
+
+### Qué no cubre la ronda 3
+
+- **Timeouts.** No se ejecutó la prueba opcional. El vencimiento de la corrida completa (`dagrun_timeout`, brecha B1) lo probó Joel el 8 de noviembre con el scheduler real. El timeout de una sola tarea (prueba A de `manejo_errores_logging.md`, sección 6) sigue sin ejecutarse.
+- **Entrega a Teams**, por la razón indicada arriba.
+
+## Revisión de contraseñas en las capturas — 9 de noviembre de 2026
+
+Se abrieron una por una todas las imágenes del repositorio:
+- las 12 de la ronda 2 en `capturas/` y sus originales en `test_ejecuciones_airflow/`;
+- las 4 de la vista *Graph* de la ronda 3 (`capturas/verificacion_final_*`) y sus originales en `test_ejecuciones_airflow/`;
+- las 3 de `cierre_joel_20261108/`;
+- las 4 gráficas de `docs/Rendimiento 5.1/`.
+
+**Ninguna muestra la contraseña de Airflow**, la pantalla de inicio de sesión ni la salida del terminal donde el api-server la imprime. La contraseña tampoco está en ningún archivo versionado: el api-server la guarda en `/opt/airflow` dentro del contenedor, que no se monta sobre el repositorio. En los logs exportados de la ronda 3 no aparecen contraseñas, tokens, secretos, URL ni correos (búsqueda de texto sobre `logs/`).
+
+En `workflow_timeout_b1.jpg` se ve el nombre de la cuenta de Power Automate de quien hizo la prueba, sin la URL del webhook. Esto ya lo registró la revisión de `cierre_joel_20261108/README.md`.
+
+Las contraseñas fijas de desarrollo de `airflow/docker-compose.yaml` (PostgreSQL `airflow` y `AIRFLOW__API_AUTH__JWT_SECRET`) están versionadas a propósito, solo sirven para el entorno local y no deben usarse en producción.
 
 ## Límites de esta evidencia
 
 - Son corridas de un conjunto pequeño (5.000 filas por fuente) en entornos de desarrollo. No sirven para extrapolar tiempos a producción.
-- Los tiempos varían entre corridas. En la ronda 1, el tiempo acumulado de las tareas según `notificar` fue de 148 s en la primera corrida exitosa y de 187 s en la última. En la ronda 2, las duraciones de Airflow de las 11 tareas de datos suman 147 s; no es la misma medida, porque incluye el arranque de cada proceso. No se investigó la causa de la variación.
+- Los tiempos varían entre corridas. En la ronda 1, el tiempo acumulado de las tareas según `notificar` fue de 148 s en la primera corrida exitosa y de 187 s en la última. En la ronda 2, las duraciones de Airflow de las 11 tareas de datos suman 147 s; no es la misma medida, porque incluye el arranque de cada proceso. En la ronda 3, el tiempo acumulado según `notificar` fue de 130,7 s. No se investigó la causa de la variación.
 - En la corrida exitosa de la ronda 2 pasan 1 min 34 s entre la fecha lógica (11:03:33) y el inicio (11:05:07). La grilla muestra una corrida anterior en verde. Con `max_active_runs=1`, una corrida manual espera a que termine la anterior; esta explicación es deducida, porque no hay captura de esa corrida.
-- No se probaron los timeouts ni la ejecución del schedule de las 02:00 con un reloj distinto.
+- No se probó el timeout de una sola tarea. El de la corrida completa lo probó Joel (`cierre_joel_20261108/`). Tampoco se probó el schedule de las 02:00 con un reloj distinto.

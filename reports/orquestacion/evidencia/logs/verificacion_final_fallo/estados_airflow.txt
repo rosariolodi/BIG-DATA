@@ -1,0 +1,18 @@
+$ airflow tasks states-for-dag-run datamarca_pipeline manual__2026-11-09T14:58:17.263515+00:00 -o table
+
+dag_id             | logical_date              | task_id                              | state           | start_date                       | end_date                        
+===================+===========================+======================================+=================+==================================+=================================
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | validacion.validar_transacciones     | success         | 2026-11-09T14:58:19.058264+00:00 | 2026-11-09T14:58:42.733929+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | transformacion.limpiar_logs          | failed          | 2026-11-09T15:12:11.551571+00:00 | 2026-11-09T15:12:11.792730+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | validacion.validar_logs              | success         | 2026-11-09T14:58:19.051312+00:00 | 2026-11-09T14:58:42.783220+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | validacion.compuerta_calidad         | success         | 2026-11-09T14:58:43.750041+00:00 | 2026-11-09T14:58:43.944186+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | transformacion.limpiar_transacciones | success         | 2026-11-09T14:58:44.860416+00:00 | 2026-11-09T14:58:53.837541+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | persistencia.persistir_silver        | upstream_failed | 2026-11-09T15:12:12.510966+00:00 | 2026-11-09T15:12:12.510966+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | transformacion.unir                  | upstream_failed | 2026-11-09T15:12:12.513733+00:00 | 2026-11-09T15:12:12.513733+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | corrida_completa                     | upstream_failed | 2026-11-09T15:12:13.553875+00:00 | 2026-11-09T15:12:13.553875+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | transformacion.agregar               | upstream_failed | 2026-11-09T15:12:13.555923+00:00 | 2026-11-09T15:12:13.555923+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | persistencia.persistir_gold          | upstream_failed | 2026-11-09T15:12:14.595827+00:00 | 2026-11-09T15:12:14.595827+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | ingestion.ingestar_logs              | success         | 2026-11-09T14:58:17.931837+00:00 | 2026-11-09T14:58:18.176079+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | ingestion.ingestar_transacciones     | success         | 2026-11-09T14:58:17.911881+00:00 | 2026-11-09T14:58:18.564748+00:00
+datamarca_pipeline | 2026-11-09T14:58:15+00:00 | notificar                            | success         | 2026-11-09T15:12:15.744114+00:00 | 2026-11-09T15:12:15.967157+00:00
+                                                                                                                                                                             

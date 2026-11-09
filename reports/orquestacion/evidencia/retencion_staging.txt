@@ -1,0 +1,14 @@
+../data/_staging/manual__2026-11-09T14-50-01.226020-00-00/
+estado
+gold_tablas.json
+metricas
+../data/_staging/manual__2026-11-09T14-58-17.263515-00-00/
+estado
+limpio_transacciones
+metricas
+validos_logs_ecommerce
+validos_transacciones
+../data/_staging/scheduled__2026-11-09T07-00-00-00-00/
+estado
+gold_tablas.json
+metricas
