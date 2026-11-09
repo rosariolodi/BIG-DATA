@@ -292,13 +292,13 @@ Cada punto de lo asignado en la tarea T1.3, con su evidencia:
 | Retención por días: cambio en `tareas.py` | Hecho: `DATAMARCA_RETENCION_DIAS=7` | Sección 5.2 |
 | Opcional: probar los timeouts | El de la corrida lo probó Joel (B1). El de una tarea está preparado y sin ejecutar | Sección 6 |
 | Aclarar en `airflow/README.md` que Windows sin Docker no funciona | Hecho | `airflow/README.md`, sección "Sin Docker" |
-| Usar la evidencia existente sin duplicarla | Hecho: cada ronda agrega lo que faltaba en la anterior. Queda una duplicación: `test_ejecuciones_airflow/`, en la raíz, tiene los originales de las capturas, en HEIC y JPEG con extensión `.png` | `evidencia/README.md` |
+| Usar la evidencia existente sin duplicarla | Hecho: cada ronda agrega lo que faltaba en la anterior. La carpeta duplicada se retiró en el PR #36; las capturas definitivas se conservan en `reports/orquestacion/evidencia/capturas/` | `evidencia/README.md` |
 
 Pendientes:
 
 | Pendiente | Responsable | Estado |
 |---|---|---|
-| Verificación final del DAG desde `main` en Docker (GitHub Codespaces): una corrida exitosa y una con fallo forzado; vista *Graph* de las dos; logs de texto del último intento de `limpiar_logs` y de `notificar` de la fallida; retención | Kinan | **Hecho el 9 de noviembre.** `evidencia/README.md`, "Ronda 3". Pendiente solo el commit y el PR |
+| Verificación final del DAG desde `main` en Docker (GitHub Codespaces): una corrida exitosa y una con fallo forzado; vista *Graph* de las dos; logs de texto del último intento de `limpiar_logs` y de `notificar` de la fallida; retención | Kinan | **Hecho el 9 de noviembre e integrado en main mediante el [PR #36](https://github.com/rosariolodi/BIG-DATA/pull/36).** `evidencia/README.md`, "Ronda 3" |
 | Ninguna captura del repositorio muestra la contraseña de Airflow | Kinan | **Hecho el 9 de noviembre**, también con las capturas de la vista *Graph*: `evidencia/README.md`, "Revisión de contraseñas en las capturas" |
 | Timeout de una sola tarea (prueba A de la sección 6) | Kinan | Opcional, sin ejecutar |
 | Pruebas con pyspark | Equipo | Cubiertas por CI: `.github/workflows/tests.yml` corre la suite completa en Ubuntu y Windows con Java 17 |

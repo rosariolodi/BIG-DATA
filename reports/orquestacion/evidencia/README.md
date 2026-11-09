@@ -189,8 +189,8 @@ Las tres esperas caen otra vez en los rangos de las rondas anteriores, más cerc
 ## Revisión de contraseñas en las capturas — 9 de noviembre de 2026
 
 Se abrieron una por una todas las imágenes del repositorio:
-- las 12 de la ronda 2 en `capturas/` y sus originales en `test_ejecuciones_airflow/`;
-- las 4 de la vista *Graph* de la ronda 3 (`capturas/verificacion_final_*`) y sus originales en `test_ejecuciones_airflow/`;
+- las 12 de la ronda 2 conservadas en `capturas/`;
+- las 4 de la vista *Graph* de la ronda 3 conservadas en `capturas/verificacion_final_*`;
 - las 3 de `cierre_joel_20261108/`;
 - las 4 gráficas de `docs/Rendimiento 5.1/`.
 
