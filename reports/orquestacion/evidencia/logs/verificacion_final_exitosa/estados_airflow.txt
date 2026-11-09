@@ -1,0 +1,18 @@
+$ airflow tasks states-for-dag-run datamarca_pipeline manual__2026-11-09T14:50:01.226020+00:00 -o table
+
+dag_id             | logical_date              | task_id                              | state   | start_date                       | end_date                        
+===================+===========================+======================================+=========+==================================+=================================
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | ingestion.ingestar_transacciones     | success | 2026-11-09T14:51:25.106267+00:00 | 2026-11-09T14:51:25.514861+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | validacion.validar_logs              | success | 2026-11-09T14:51:26.450495+00:00 | 2026-11-09T14:51:47.172787+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | validacion.validar_transacciones     | success | 2026-11-09T14:51:26.460615+00:00 | 2026-11-09T14:51:47.477573+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | validacion.compuerta_calidad         | success | 2026-11-09T14:51:47.738461+00:00 | 2026-11-09T14:51:47.917368+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | transformacion.unir                  | success | 2026-11-09T14:52:03.680709+00:00 | 2026-11-09T14:52:22.028997+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | transformacion.limpiar_logs          | success | 2026-11-09T14:51:48.823988+00:00 | 2026-11-09T14:52:02.633596+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | persistencia.persistir_silver        | success | 2026-11-09T14:52:03.668178+00:00 | 2026-11-09T14:52:23.708725+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | transformacion.agregar               | success | 2026-11-09T14:52:22.797687+00:00 | 2026-11-09T14:52:38.250284+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | persistencia.persistir_gold          | success | 2026-11-09T14:52:39.175938+00:00 | 2026-11-09T14:52:51.968437+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | corrida_completa                     | success | 2026-11-09T14:52:52.365681+00:00 | 2026-11-09T14:52:52.365684+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | notificar                            | success | 2026-11-09T14:52:52.495218+00:00 | 2026-11-09T14:52:52.698797+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | ingestion.ingestar_logs              | success | 2026-11-09T14:51:25.112006+00:00 | 2026-11-09T14:51:25.329759+00:00
+datamarca_pipeline | 2026-11-09T14:49:57+00:00 | transformacion.limpiar_transacciones | success | 2026-11-09T14:51:48.849286+00:00 | 2026-11-09T14:52:02.743580+00:00
+                                                                                                                                                                     
