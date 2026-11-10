@@ -302,7 +302,7 @@ Pendientes:
 | Ninguna captura del repositorio muestra la contraseña de Airflow | Kinan | **Hecho el 9 de noviembre**, también con las capturas de la vista *Graph*: `evidencia/README.md`, "Revisión de contraseñas en las capturas" |
 | Timeout de una sola tarea (prueba A de la sección 6) | Kinan | Opcional, sin ejecutar |
 | Pruebas con pyspark | Equipo | Cubiertas por CI: `.github/workflows/tests.yml` corre la suite completa en Ubuntu y Windows con Java 17 |
-| Visto bueno de Rosario a los cambios en sus archivos (sección 9) | Kinan → Rosario | Pendiente del aviso |
+| Visto bueno de Rosario a los cambios en sus archivos (sección 9) | Kinan → Rosario | Aprobado |
 | `DATAMARCA_LIMPIAR_STAGING`, `DATAMARCA_RETENCION_DIAS` y la política de retención en el README principal | Julián y Joel (T1.4) | Documentadas en `airflow/README.md`, sección "Variables de entorno" |
 | Brechas B2, B3, B6 y B8 | Rosario y el equipo | Propuesto, en orden de prioridad. B1 y B5 las resolvió Joel (PR #34): `on_failure_callback` y canal de Teams |
 | `JAVA_HOME` del `Dockerfile` en Apple Silicon | Rosario | Propuesto |
